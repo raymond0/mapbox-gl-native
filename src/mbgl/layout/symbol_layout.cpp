@@ -257,8 +257,6 @@ void SymbolLayout::addFeature(const GeometryCollection &lines,
     const SymbolPlacementType iconPlacement = layout.iconRotationAlignment != AlignmentType::Map
                                                   ? SymbolPlacementType::Point
                                                   : layout.symbolPlacement;
-    const bool mayOverlap = layout.textAllowOverlap || layout.iconAllowOverlap ||
-        layout.textIgnorePlacement || layout.iconIgnorePlacement;
     const bool isLine = layout.symbolPlacement == SymbolPlacementType::Line;
     const float textRepeatDistance = symbolSpacing / 2;
 
@@ -284,7 +282,8 @@ void SymbolLayout::addFeature(const GeometryCollection &lines,
                 }
             }
 
-            const bool inside = !(anchor.point.x < 0 || anchor.point.x > util::EXTENT || anchor.point.y < 0 || anchor.point.y > util::EXTENT);
+            const bool within = anchor.point.x >= 0 && anchor.point.x < util::EXTENT && anchor.point.y >= 0 && anchor.point.y < util::EXTENT;
+            const bool inside = within || anchor.point.x == util::EXTENT || anchor.point.y == util::EXTENT;
 
             if (avoidEdges && !inside) continue;
 
@@ -294,12 +293,11 @@ void SymbolLayout::addFeature(const GeometryCollection &lines,
             //
             // Symbols in layers with overlap are sorted in the y direction so that
             // symbols lower on the canvas are drawn on top of symbols near the top.
-            // To preserve this order across tile boundaries these symbols can't
-            // be drawn across tile boundaries. Instead they need to be included in
-            // the buffers for both tiles and clipped to tile boundaries at draw time.
             //
-            // TODO remove the `&& false` when is #1673 implemented
-            const bool addToBuffers = (mode == MapMode::Still) || inside || (mayOverlap && false);
+            // Symbols located on tile edges are duplicated on neighbor tiles.
+            // To avoid overdraw, we skip symbols located on the tile extent.
+            //
+            const bool addToBuffers = mode == MapMode::Still || within;
 
             symbolInstances.emplace_back(anchor, line, shapedText, shapedIcon, layout, addToBuffers, symbolInstances.size(),
                     textBoxScale, textPadding, textPlacement,
