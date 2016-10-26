@@ -39,7 +39,7 @@ class SymbolAnnotationImpl {
 public:
     SymbolAnnotationImpl(AnnotationID, SymbolAnnotation);
 
-    void updateLayer(const CanonicalTileID&, AnnotationTileLayer&) const;
+    void updateLayer(const UnwrappedTileID&, AnnotationTileLayer&) const;
 
     const AnnotationID id;
     const SymbolAnnotation annotation;
@@ -55,9 +55,9 @@ namespace index {
 template <>
 struct indexable<std::shared_ptr<const mbgl::SymbolAnnotationImpl>> {
     using result_type = mbgl::LatLng;
-    mbgl::LatLng operator()(const std::shared_ptr<const mbgl::SymbolAnnotationImpl>& v) const {
+    result_type operator()(const std::shared_ptr<const mbgl::SymbolAnnotationImpl>& v) const {
         const mbgl::Point<double>& p = v->annotation.geometry;
-        return mbgl::LatLng(p.y, p.x);
+        return mbgl::LatLng { p.y, p.x };
     }
 };
 

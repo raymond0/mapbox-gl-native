@@ -11,13 +11,14 @@ SymbolAnnotationImpl::SymbolAnnotationImpl(AnnotationID id_, SymbolAnnotation an
   annotation(std::move(annotation_)) {
 }
 
-void SymbolAnnotationImpl::updateLayer(const CanonicalTileID& tileID, AnnotationTileLayer& layer) const {
+void SymbolAnnotationImpl::updateLayer(const UnwrappedTileID& tileID, AnnotationTileLayer& layer) const {
     std::unordered_map<std::string, std::string> featureProperties;
     featureProperties.emplace("sprite", annotation.icon.empty() ? std::string("default_marker") : annotation.icon);
 
     LatLng latLng { annotation.geometry.y, annotation.geometry.x };
     TileCoordinate coordinate = TileCoordinate::fromLatLng(0, latLng);
-    GeometryCoordinate tilePoint = TileCoordinate::toGeometryCoordinate(UnwrappedTileID(0, tileID), coordinate.p);
+
+    GeometryCoordinate tilePoint = TileCoordinate::toGeometryCoordinate(tileID, coordinate.p);
     layer.features.emplace_back(id, FeatureType::Point, GeometryCollection {{ {{ tilePoint }} }}, featureProperties);
 }
 

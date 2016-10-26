@@ -30,7 +30,7 @@ public:
 
     LatLng(null) : latitude(std::numeric_limits<double>::quiet_NaN()), longitude(latitude) {}
 
-    LatLng(double lat = 0, double lon = 0, WrapMode mode = Unwrapped)
+    constexpr LatLng(double lat = 0, double lon = 0, WrapMode mode = Unwrapped)
         : latitude(lat), longitude(lon) { if (mode == Wrapped) wrap(); }
 
     LatLng wrapped() const { return { latitude, longitude, Wrapped }; }
@@ -85,8 +85,8 @@ constexpr bool operator==(const ProjectedMeters& a, const ProjectedMeters& b) {
 class LatLngBounds {
 public:
     // Return a bounds covering the entire (unwrapped) world.
-    static LatLngBounds world() {
-        return LatLngBounds({-90, -180}, {90, 180});
+    static constexpr LatLngBounds world() {
+        return LatLngBounds { {-90, -180}, {90, 180} };
     }
 
     // Return the bounds consisting of the single point.
@@ -102,10 +102,9 @@ public:
     }
 
     // Return a bounds that may serve as the identity element for the extend operation.
-    static LatLngBounds empty() {
+    static constexpr LatLngBounds empty() {
         LatLngBounds bounds = world();
-        std::swap(bounds.sw, bounds.ne);
-        return bounds;
+        return { bounds.ne, bounds.sw };
     }
 
     // Constructs a LatLngBounds object with the tile's exact boundaries.
@@ -161,7 +160,7 @@ private:
     LatLng sw;
     LatLng ne;
 
-    LatLngBounds(LatLng sw_, LatLng ne_)
+    constexpr LatLngBounds(LatLng sw_, LatLng ne_)
         : sw(std::move(sw_)), ne(std::move(ne_)) {}
 
     friend constexpr bool operator==(const LatLngBounds&, const LatLngBounds&);

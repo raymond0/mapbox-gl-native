@@ -161,9 +161,9 @@ std::unique_ptr<AnnotationTileData> AnnotationManager::getTileData(const Canonic
 
     LatLngBounds tileBounds(tileID);
 
-    symbolTree.query(boost::geometry::index::intersects(tileBounds),
+    symbolTree.query(bgi::intersects(tileBounds),
         boost::make_function_output_iterator([&](const auto& val){
-            val->updateLayer(tileID, pointLayer);
+            val->updateLayer(UnwrappedTileID { 0, tileID }, pointLayer);
         }));
 
     for (const auto& shape : shapeAnnotations) {
