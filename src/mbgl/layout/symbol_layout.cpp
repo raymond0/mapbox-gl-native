@@ -349,9 +349,8 @@ std::unique_ptr<SymbolBucket> SymbolLayout::place(CollisionTile& collisionTile) 
         std::sort(symbolInstances.begin(), symbolInstances.end(), [sin, cos](SymbolInstance &a, SymbolInstance &b) {
             const int32_t aRotated = sin * a.point.x + cos * a.point.y;
             const int32_t bRotated = sin * b.point.x + cos * b.point.y;
-            return aRotated != bRotated ?
-                aRotated < bRotated :
-                a.index > b.index;
+            return aRotated != bRotated ? aRotated < bRotated :
+                sin ? a.point.x > b.point.x : a.index > b.index;
         });
     }
 
