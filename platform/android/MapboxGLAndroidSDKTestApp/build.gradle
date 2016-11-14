@@ -52,7 +52,11 @@ android {
 }
 
 dependencies {
-    compile(project(':MapboxGLAndroidSDK')) {
+    releaseCompile(project(path: ':MapboxGLAndroidSDK', configuration: 'release')) {
+        transitive = true
+    }
+
+    debugCompile(project(path: ':MapboxGLAndroidSDK', configuration: 'debug')) {
         transitive = true
     }
 
