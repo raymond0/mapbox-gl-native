@@ -11,6 +11,7 @@ class SymbolFeature {
 public:
     GeometryCollection geometry;
     optional<std::u16string> text;
+    optional<bool> rightToLeft;
     optional<std::string> icon;
     std::size_t index;
 };
