@@ -98,6 +98,7 @@ public class MyLocationView extends View {
 
     // Controls the compass update rate in milliseconds
     private static final int COMPASS_UPDATE_RATE_MS = 500;
+    private static final int COMPASS_NO_ANIMATION = 0;
 
     @MyLocationTracking.Mode
     private int myLocationTrackingMode;
@@ -317,9 +318,9 @@ public class MyLocationView extends View {
         this.bearing = bearing;
         if (myLocationTrackingMode == MyLocationTracking.TRACKING_NONE) {
             if (myBearingTrackingMode == MyBearingTracking.GPS) {
-                setCompass(location.getBearing() - bearing);
+                setCompass(location.getBearing() - bearing, COMPASS_NO_ANIMATION);
             } else if (myBearingTrackingMode == MyBearingTracking.COMPASS) {
-                setCompass(magneticHeading - bearing);
+                setCompass(magneticHeading - bearing, COMPASS_NO_ANIMATION);
             }
         }
     }
@@ -458,7 +459,7 @@ public class MyLocationView extends View {
             compassListener.onPause();
             if (myLocationTrackingMode == MyLocationTracking.TRACKING_FOLLOW) {
                 // always face north
-                setCompass(0);
+                setCompass(0, COMPASS_NO_ANIMATION);
             } else {
                 myLocationBehavior.invalidate();
             }
@@ -485,7 +486,7 @@ public class MyLocationView extends View {
         invalidate();
     }
 
-    private void setCompass(double bearing) {
+    private void setCompass(double bearing, long duration) {
         float oldDir = previousDirection;
         if (directionAnimator != null) {
             oldDir = (Float) directionAnimator.getAnimatedValue();
@@ -503,7 +504,7 @@ public class MyLocationView extends View {
         previousDirection = newDir;
 
         directionAnimator = ValueAnimator.ofFloat(oldDir, newDir);
-        directionAnimator.setDuration(COMPASS_UPDATE_RATE_MS);
+        directionAnimator.setDuration(duration);
         directionAnimator.addUpdateListener(invalidateSelfOnUpdateListener);
         directionAnimator.start();
     }
@@ -586,10 +587,10 @@ public class MyLocationView extends View {
                 if (myLocationTrackingMode == MyLocationTracking.TRACKING_FOLLOW) {
                     // Change the user location view orientation to reflect the device orientation
                     rotateCamera(magneticHeading);
-                    setCompass(0);
+                    setCompass(0, COMPASS_UPDATE_RATE_MS);
                 } else {
                     // Change compass direction
-                    setCompass(magneticHeading - bearing);
+                    setCompass(magneticHeading - bearing, COMPASS_UPDATE_RATE_MS);
                 }
 
                 compassUpdateNextTimestamp = currentTime + COMPASS_UPDATE_RATE_MS;
@@ -706,7 +707,7 @@ public class MyLocationView extends View {
                 if (location.hasBearing()) {
                     builder.bearing(location.getBearing());
                 }
-                setCompass(0);
+                setCompass(0, COMPASS_UPDATE_RATE_MS);
             }
 
             // accuracy
