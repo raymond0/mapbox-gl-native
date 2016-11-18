@@ -29,6 +29,8 @@
 #include <mbgl/util/chrono.hpp>
 #include <mbgl/util/run_loop.hpp>
 
+#import <mbgl/storage/urt_file_source.hpp>
+
 #import "Mapbox.h"
 #import "MGLFeature_Private.h"
 #import "MGLGeometry_Private.h"
@@ -306,6 +308,8 @@ public:
     BOOL _delegateHasLineWidthsForShapeAnnotations;
 
     MGLCompassDirectionFormatter *_accessibilityCompassFormatter;
+    
+    std::shared_ptr<mbgl::URTFileSource> _urtFileSource;
 }
 
 #pragma mark - Setup & Teardown -
@@ -406,10 +410,11 @@ public:
     // setup mbgl map
     const std::array<uint16_t, 2> size = {{ static_cast<uint16_t>(self.bounds.size.width),
                                             static_cast<uint16_t>(self.bounds.size.height) }};
-    mbgl::DefaultFileSource *mbglFileSource = [MGLOfflineStorage sharedOfflineStorage].mbglFileSource;
+    //mbgl::FileSource *mbglFileSource = [MGLOfflineStorage sharedOfflineStorage].mbglFileSource;
+    _urtFileSource = std::shared_ptr<mbgl::URTFileSource>(new mbgl::URTFileSource);
     const float scaleFactor = [UIScreen instancesRespondToSelector:@selector(nativeScale)] ? [[UIScreen mainScreen] nativeScale] : [[UIScreen mainScreen] scale];
     _mbglThreadPool = new mbgl::ThreadPool(4);
-    _mbglMap = new mbgl::Map(*_mbglView, size, scaleFactor, *mbglFileSource, *_mbglThreadPool, mbgl::MapMode::Continuous, mbgl::GLContextMode::Unique, mbgl::ConstrainMode::None, mbgl::ViewportMode::Default);
+    _mbglMap = new mbgl::Map(*_mbglView, size, scaleFactor, *_urtFileSource, *_mbglThreadPool, mbgl::MapMode::Continuous, mbgl::GLContextMode::Unique, mbgl::ConstrainMode::None, mbgl::ViewportMode::Default);
     [self validateTileCacheSize];
 
     // start paused if in IB
