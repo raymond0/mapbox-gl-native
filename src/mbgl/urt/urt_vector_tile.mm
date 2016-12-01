@@ -303,16 +303,12 @@ vector<UrtVectorTileFeature::CoordRange> UrtVectorTileFeature::RelevantCoordinat
 GeometryCoordinates UrtVectorTileFeature::GetMapboxCoordinatesInRange( CoordRange coordRange ) const
 {
     Coordinate *origin = region.minimum;
-    static const double extent = 4096.0;
+    static const double extent = util::EXTENT;
     const double latExtent = region.height;
     const double lonExtent = region.width;
     
-    //assert(latExtent == lonExtent);
-    
     const double latMultiplier = extent / latExtent;
     const double lonMultiplier = extent / lonExtent;
-    
-    vector<pair<uint32_t, uint32_t> > zigzaggedCoords;
     
     coord *coords;
     unsigned int nrCoords = (unsigned int) [mapItem lengthOfCoordinatesWithData:&coords];
@@ -328,6 +324,15 @@ GeometryCoordinates UrtVectorTileFeature::GetMapboxCoordinatesInRange( CoordRang
         double tileY = ((double) localCoord.lat ) * latMultiplier;
         
         GeometryCoordinate outputCoord( tileX, extent - tileY );
+        
+        if ( i > 0 )
+        {
+            if ( output.back().x == outputCoord.x &&  output.back().y == outputCoord.y )
+            {
+                continue;
+            }
+        }
+        
         output.emplace_back( outputCoord );
     }
     
@@ -340,15 +345,24 @@ GeometryCollection UrtVectorTileFeature::getGeometries() const
     //
     // ToDo - this will handle roads. Polygon's need to be clipped and have first coordinate appended at end
     //
-    auto coordinateRanges = RelevantCoordinateRangesInTileRect();
-    
-    GeometryCollection lines;
-    for ( auto range : coordinateRanges )
+    if ( ItemTypeIsRoad( mapItem.itemType ) )
     {
-        auto coords = GetMapboxCoordinatesInRange( range );
-        lines.emplace_back( coords );
+        auto coordinateRanges = RelevantCoordinateRangesInTileRect();
+        
+        GeometryCollection lines;
+        for ( auto range : coordinateRanges )
+        {
+            auto coords = GetMapboxCoordinatesInRange( range );
+            lines.emplace_back( coords );
+        }
+        
+        return lines;
     }
     
+    GeometryCollection lines;
+    NSInteger nrCoords = [mapItem lengthOfCoordinatesWithData:nil];
+    auto coords = GetMapboxCoordinatesInRange( CoordRange( 0, nrCoords ) );
+    lines.emplace_back( coords );
     return lines;
 }
 
@@ -529,7 +543,7 @@ void UrtVectorTileData::parse() const
 }
     
 
-void UrtVectorTile::setData(std::shared_ptr<const std::string> data_,
+void UrtVectorTile::setData(std::shared_ptr<const std::string>,
                          optional<Timestamp> modified_,
                          optional<Timestamp> expires_,
                          std::shared_ptr<UrtTileData> urtTile_)
@@ -539,7 +553,7 @@ void UrtVectorTile::setData(std::shared_ptr<const std::string> data_,
     
     assert( urtTile_ != nullptr );
     
-    auto dataItem = data_ ? std::make_unique<UrtVectorTileData>(urtTile_) : nullptr;
+    auto dataItem = urtTile_ != nullptr ? std::make_unique<UrtVectorTileData>(urtTile_) : nullptr;
     
     GeometryTile::setData(std::move(dataItem));
 }
