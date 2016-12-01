@@ -10,7 +10,7 @@
 
 #include <stdio.h>
 #include <memory>
-#include <mbgl/tile/urt_tile_data.hpp>
+#include <mbgl/urt/urt_tile_data.hpp>
 #include <mbgl/tile/geometry_tile_data.hpp>
 #include <mbgl/tile/vector_tile.hpp>
 

@@ -13,6 +13,7 @@
 #include <iostream>
 #include <string>
 #include <unordered_map>
+#include "rayclipper.h"
 
 namespace mbgl
 {
@@ -38,6 +39,7 @@ private:
     typedef std::pair<uint32_t, uint32_t> CoordRange;
     vector<CoordRange> RelevantCoordinateRangesInTileRect() const;
     GeometryCoordinates GetMapboxCoordinatesInRange( CoordRange coordRange ) const;
+    GeometryCoordinates ConvertToMapboxCoordinates( const vector<coord> &globalCoords ) const;
 };
     
     
@@ -280,6 +282,42 @@ vector<UrtVectorTileFeature::CoordRange> UrtVectorTileFeature::RelevantCoordinat
 }
     
     
+GeometryCoordinates UrtVectorTileFeature::ConvertToMapboxCoordinates( const vector<coord> &globalCoords ) const
+{
+    Coordinate *origin = region.minimum;
+    static const double extent = util::EXTENT;
+    const double latExtent = region.height;
+    const double lonExtent = region.width;
+    
+    const double latMultiplier = extent / latExtent;
+    const double lonMultiplier = extent / lonExtent;
+    
+    GeometryCoordinates output;
+    
+    for ( const auto &coord : globalCoords )
+    {
+        struct coord localCoord = [origin localCoordinateFrom:coord];
+        
+        double tileX = ((double) localCoord.x ) * lonMultiplier;
+        double tileY = ((double) localCoord.y ) * latMultiplier;
+        
+        GeometryCoordinate outputCoord( tileX, extent - tileY );
+        
+        if ( output.size() > 0 )
+        {
+            if ( output.back().x == outputCoord.x &&  output.back().y == outputCoord.y )
+            {
+                continue;
+            }
+        }
+        
+        output.emplace_back( outputCoord );
+    }
+    
+    return output;
+}
+    
+    
 GeometryCoordinates UrtVectorTileFeature::GetMapboxCoordinatesInRange( CoordRange coordRange ) const
 {
     Coordinate *origin = region.minimum;
@@ -300,8 +338,8 @@ GeometryCoordinates UrtVectorTileFeature::GetMapboxCoordinatesInRange( CoordRang
         assert( coordRange.first + i < nrCoords );
         coord localCoord = [origin localCoordinateFrom:coords[ coordRange.first + i ]];
 
-        double tileX = ((double) localCoord.lon ) * lonMultiplier;
-        double tileY = ((double) localCoord.lat ) * latMultiplier;
+        double tileX = ((double) localCoord.x ) * lonMultiplier;
+        double tileY = ((double) localCoord.y ) * latMultiplier;
         
         GeometryCoordinate outputCoord( tileX, extent - tileY );
         
@@ -340,15 +378,36 @@ GeometryCollection UrtVectorTileFeature::getGeometries() const
     }
     
     GeometryCollection lines;
+    coord *coords = nil;
+    NSInteger nrCoords = [mapItem lengthOfCoordinatesWithData:&coords];
     
     if ( fromProxyTile )
     {
+        rayclipper::Polygon inputPolygon;
+        inputPolygon.resize( nrCoords );
+        
+        for ( NSInteger i = 0; i < nrCoords; i++ )
+        {
+            inputPolygon[i] = coords[i];
+        }
+        
+        rayclipper::rect rect = {region.minimum.coord, region.maximum.coord};
+        auto outPolygons = RayClipPolygon( inputPolygon, rect );
+        
+        for ( auto &outPolygon : outPolygons )
+        {
+            auto localPolygon = ConvertToMapboxCoordinates( outPolygon );
+            if ( localPolygon.size() >= 3 )
+            {
+                lines.emplace_back( localPolygon );
+            }
+        }
+        
         return lines;
     }
 
-    NSInteger nrCoords = [mapItem lengthOfCoordinatesWithData:nil];
-    auto coords = GetMapboxCoordinatesInRange( CoordRange( 0, nrCoords ) );
-    lines.emplace_back( coords );
+    auto allUnclippedCoords = GetMapboxCoordinatesInRange( CoordRange( 0, nrCoords ) );
+    lines.emplace_back( allUnclippedCoords );
     return lines;
 }
 

@@ -29,7 +29,7 @@
 #include <mbgl/util/chrono.hpp>
 #include <mbgl/util/run_loop.hpp>
 
-#import <mbgl/storage/urt_file_source.hpp>
+#import <mbgl/urt/urt_file_source.hpp>
 
 #import "Mapbox.h"
 #import "MGLFeature_Private.h"

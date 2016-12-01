@@ -7,7 +7,7 @@
 #include <string>
 #include <memory>
 
-#include <mbgl/tile/urt_tile_data.hpp>
+#include <mbgl/urt/urt_tile_data.hpp>
 
 namespace mbgl {
 
