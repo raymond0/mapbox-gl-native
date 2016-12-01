@@ -11,7 +11,6 @@
 #import "UrtFile/UrtFile.h"
 #include <mutex>
 
-
 namespace mbgl {
     
     
@@ -156,6 +155,8 @@ std::unique_ptr<AsyncRequest> URTFileSource::Impl::TileRequest(const Resource& r
             else
             {
                 response.data = std::make_shared<std::string>((const char *)[mbdata bytes], [mbdata length]);
+                //response.data = std::make_shared<std::string>("Use tileArray parameter");
+                response.urtTile = std::make_shared<UrtTileData>((__bridge_retained void *) maptiles, (__bridge_retained void *) urTileName);
             }
         }
         else

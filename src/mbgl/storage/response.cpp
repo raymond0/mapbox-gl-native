@@ -18,6 +18,7 @@ Response& Response::operator=(const Response& res) {
     modified = res.modified;
     expires = res.expires;
     etag = res.etag;
+    urtTile = res.urtTile;
     return *this;
 }
 

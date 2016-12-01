@@ -7,6 +7,8 @@
 #include <string>
 #include <memory>
 
+#include <mbgl/tile/urt_tile_data.hpp>
+
 namespace mbgl {
 
 class Response {
@@ -37,6 +39,8 @@ public:
     bool isFresh() const {
         return !expires || *expires > util::now();
     }
+    
+    std::shared_ptr<UrtTileData> urtTile;
 };
 
 class Response::Error {
