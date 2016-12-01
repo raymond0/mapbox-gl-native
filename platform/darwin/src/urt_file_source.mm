@@ -140,30 +140,12 @@ std::unique_ptr<AsyncRequest> URTFileSource::Impl::TileRequest(const Resource& r
     auto request = std::make_unique<URTRequest>(callback);
     auto shared = request->shared; // Explicit copy so that it also gets copied into the completion handler block below.
     
-    [mapManager getTilesOrNonEmptyProxiesNamed:urTileName callingBlock:^( NSArray *maptiles )
+    [mapManager getTilesOrProxiesNamed:urTileName callingBlock:^( NSArray *maptiles )
     {
         Response response;
 
-        if ( maptiles.count == 1 )
-        {
-            MapTile *maptile = maptiles[0];
-            NSData *mbdata = [maptile mapboxData];
-            if ( mbdata.length == 0 )
-            {
-                response.noContent = true;
-            }
-            else
-            {
-                response.data = std::make_shared<std::string>((const char *)[mbdata bytes], [mbdata length]);
-                //response.data = std::make_shared<std::string>("Use tileArray parameter");
-                response.urtTile = std::make_shared<UrtTileData>((__bridge_retained void *) maptiles, (__bridge_retained void *) urTileName);
-            }
-        }
-        else
-        {
-            response.noContent = true;
-        }
-        
+        response.data = std::make_shared<std::string>("Use tileArray parameter");
+        response.urtTile = std::make_shared<UrtTileData>((__bridge_retained void *) maptiles, (__bridge_retained void *) urTileName);
         shared->notify(response);
     }];
 

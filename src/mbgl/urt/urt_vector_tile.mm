@@ -21,7 +21,7 @@ using namespace std;
 
 class UrtVectorTileFeature : public GeometryTileFeature {
 public:
-    UrtVectorTileFeature(MapItem *mapItem, Region *region_);
+    UrtVectorTileFeature( MapItem *mapItem, Region *region_, bool fromProxyTile_ );
     
     FeatureType getType() const override;
     optional<Value> getValue(const std::string&) const override;
@@ -32,6 +32,7 @@ public:
 private:
     Region *region;
     MapItem *mapItem;
+    bool fromProxyTile;
     unordered_map<string,Value> GetMapboxTags();
     unordered_map<string,Value> properties;
     typedef std::pair<uint32_t, uint32_t> CoordRange;
@@ -175,33 +176,12 @@ unordered_map<string,Value> UrtVectorTileFeature::GetMapboxTags()
 }
     
     
-UrtVectorTileFeature::UrtVectorTileFeature(MapItem *mapItem_, Region *region_)
+UrtVectorTileFeature::UrtVectorTileFeature(MapItem *mapItem_, Region *region_, bool fromProxyTile_)
 {
     mapItem = mapItem_;
     properties = GetMapboxTags();
     region = region_;
-
-    /*
-    while (feature_pbf.next()) {
-        switch (feature_pbf.tag()) {
-            case 1: // id
-                id = { feature_pbf.get_uint64() };
-                break;
-            case 2: // tags
-                tags_iter = feature_pbf.get_packed_uint32();
-                break;
-            case 3: // type
-                type = static_cast<FeatureType>(feature_pbf.get_enum());
-                break;
-            case 4: // geometry
-                geometry_iter = feature_pbf.get_packed_uint32();
-                break;
-            default:
-                feature_pbf.skip();
-                break;
-        }
-    }
-     */
+    fromProxyTile = fromProxyTile_;
 }
     
     
@@ -360,6 +340,12 @@ GeometryCollection UrtVectorTileFeature::getGeometries() const
     }
     
     GeometryCollection lines;
+    
+    if ( fromProxyTile )
+    {
+        return lines;
+    }
+
     NSInteger nrCoords = [mapItem lengthOfCoordinatesWithData:nil];
     auto coords = GetMapboxCoordinatesInRange( CoordRange( 0, nrCoords ) );
     lines.emplace_back( coords );
@@ -370,6 +356,7 @@ GeometryCollection UrtVectorTileFeature::getGeometries() const
 class UrtTileLayer : public GeometryTileLayer {
 public:
     UrtTileLayer( string name_, Region *region_ ) { name = name_; region = region_; }
+    void addMapItem( MapItem *mapItem, bool formProxyTile );
     
     std::size_t featureCount() const override { return features.size(); }
     std::unique_ptr<GeometryTileFeature> getFeature(std::size_t) const override;
@@ -378,14 +365,20 @@ public:
 private:
     Region *region;
     string name;
-    std::vector<MapItem *> features;
-    friend class UrtVectorTileData;
+    vector<pair<MapItem *, bool> > features;
 };
+    
+    
+void UrtTileLayer::addMapItem( MapItem *mapItem, bool fromProxyTile )
+{
+    features.emplace_back( mapItem, fromProxyTile );
+}
+
     
     
 unique_ptr<GeometryTileFeature> UrtTileLayer::getFeature(std::size_t i) const
 {
-    return std::make_unique<UrtVectorTileFeature>(features.at(i), region);
+    return std::make_unique<UrtVectorTileFeature>(features.at(i).first, region, features.at(i).second);
 }
     
     
@@ -472,6 +465,7 @@ private:
     typedef std::vector<std::shared_ptr<UrtTileLayer> > LayersType;
     std::shared_ptr< LayersType > layers;
     void parse() const;
+    void addMapTile( MapTile *mapTile, bool wasProxyTile ) const;
 };
     
     
@@ -491,12 +485,17 @@ UrtVectorTileData::UrtVectorTileData(std::shared_ptr<UrtTileData> data_)
     
 const GeometryTileLayer* UrtVectorTileData::getLayer(const std::string& name) const
 {
-    if (!parsed) {
+    if (!parsed && data != nullptr )
+    {
         parsed = true;
         
         assert( data != nullptr );
-        printf( "Let's do this shit!!!\n" );
+        NSString *tilename = ( __bridge NSString * ) data->tilenameNSString();
+        printf( "Parsing tile %s\n", tilename.UTF8String );
+        
         parse();
+        
+        printf( "Finished parsing tile %s\n", tilename.UTF8String );
     }
     
     auto layerPosition = std::find( layerNames.begin(), layerNames.end(), name );
@@ -510,6 +509,34 @@ const GeometryTileLayer* UrtVectorTileData::getLayer(const std::string& name) co
     return layers->at(index).get();
 }
 
+    
+void UrtVectorTileData::addMapTile( MapTile *mapTile, bool fromProxyTile ) const
+{
+    NSEnumerator *mapItemEnumerator = [mapTile mapItemEnumerator];
+    MapItem *mapItem;
+    
+    while ( (mapItem = [mapItemEnumerator nextObject]) != nil )
+    {
+        BOOL wasParentRef = NO;
+        unsigned int itemType = mapItem.itemType;
+        
+        if ( type_parent_ref_1 <= itemType && itemType <= type_parent_ref_20 )
+        {
+            mapItem = [mapTile resolveUpreferenceForItem:mapItem];
+            if ( mapItem == nil )
+            {
+                continue;
+            }
+            wasParentRef = YES;
+            itemType = mapItem.itemType;
+        }
+        
+        LayerType layer = LayerForItemType( itemType );
+        layers->at(layer)->addMapItem( mapItem, fromProxyTile );
+    }
+
+}
+
 
 void UrtVectorTileData::parse() const
 {
@@ -517,28 +544,16 @@ void UrtVectorTileData::parse() const
 
     for ( MapTile *mapTile in mapTiles )
     {
-        NSEnumerator *mapItemEnumerator = [mapTile mapItemEnumerator];
-        MapItem *mapItem;
+        bool blankNode = false;
+        MapTile *tile = mapTile;
         
-        while ( (mapItem = [mapItemEnumerator nextObject]) != nil )
+        while ( tile.blankNode && tile != nil )
         {
-            BOOL wasParentRef = NO;
-            unsigned int itemType = mapItem.itemType;
-            
-            if ( type_parent_ref_1 <= itemType && itemType <= type_parent_ref_20 )
-            {
-                mapItem = [mapTile resolveUpreferenceForItem:mapItem];
-                if ( mapItem == nil )
-                {
-                    continue;
-                }
-                wasParentRef = YES;
-                itemType = mapItem.itemType;
-            }
-
-            LayerType layer = LayerForItemType( itemType );
-            layers->at(layer)->features.emplace_back( mapItem );
+            blankNode = true;
+            tile = tile.parent;
         }
+        
+        addMapTile( tile, blankNode );
     }
 }
     
