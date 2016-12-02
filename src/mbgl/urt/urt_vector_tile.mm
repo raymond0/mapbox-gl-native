@@ -23,23 +23,26 @@ using namespace std;
 class UrtVectorTileFeature : public GeometryTileFeature {
 public:
     UrtVectorTileFeature( MapItem *mapItem, Region *region_, bool fromProxyTile_ );
+    virtual unique_ptr<GeometryTileFeature> clone();
     
-    FeatureType getType() const override;
+    virtual FeatureType getType() const override;
     optional<Value> getValue(const std::string&) const override;
     std::unordered_map<std::string,Value> getProperties() const override;
     optional<FeatureIdentifier> getID() const override;
-    GeometryCollection getGeometries() const override;
+    virtual GeometryCollection getGeometries() const override;
     
-private:
+protected:
     Region *region;
-    MapItem *mapItem;
     bool fromProxyTile;
-    unordered_map<string,Value> GetMapboxTags();
-    unordered_map<string,Value> properties;
+    unordered_map<string,Value> properties;     // ToDo - switch to shared_ptr ???
     typedef std::pair<uint32_t, uint32_t> CoordRange;
-    vector<CoordRange> RelevantCoordinateRangesInTileRect() const;
-    GeometryCoordinates GetMapboxCoordinatesInRange( CoordRange coordRange ) const;
+    vector<CoordRange> RelevantCoordinateRangesInTileRect( MapItem *item ) const;
     GeometryCoordinates ConvertToMapboxCoordinates( const vector<coord> &globalCoords ) const;
+    GeometryCoordinates GetMapboxCoordinatesInRange( MapItem *item, CoordRange coordRange ) const;
+    GeometryCollection ClippedPolygonInLocalCoords( MapItem *item ) const;
+private:
+    MapItem *mapItem;
+    unordered_map<string,Value> GetMapboxTags();
 };
     
     
@@ -187,6 +190,14 @@ UrtVectorTileFeature::UrtVectorTileFeature(MapItem *mapItem_, Region *region_, b
 }
     
     
+unique_ptr<GeometryTileFeature> UrtVectorTileFeature::clone()
+{
+    auto other = make_unique<UrtVectorTileFeature>(mapItem, region, fromProxyTile);
+    other->properties = properties;
+    return move(other);
+}
+    
+    
 FeatureType UrtVectorTileFeature::getType() const
 {
     if ( ItemTypeIsPlaceLabel( mapItem.itemType ) )
@@ -226,11 +237,11 @@ optional<FeatureIdentifier> UrtVectorTileFeature::getID() const
 }
     
     
-vector<UrtVectorTileFeature::CoordRange> UrtVectorTileFeature::RelevantCoordinateRangesInTileRect() const
+vector<UrtVectorTileFeature::CoordRange> UrtVectorTileFeature::RelevantCoordinateRangesInTileRect( MapItem *item ) const
 {
     vector<CoordRange> validRanges;
     coord *coords;
-    NSInteger nrCoords = [mapItem lengthOfCoordinatesWithData:&coords];
+    NSInteger nrCoords = [item lengthOfCoordinatesWithData:&coords];
     
     if ( nrCoords == 1 )
     {
@@ -318,7 +329,7 @@ GeometryCoordinates UrtVectorTileFeature::ConvertToMapboxCoordinates( const vect
 }
     
     
-GeometryCoordinates UrtVectorTileFeature::GetMapboxCoordinatesInRange( CoordRange coordRange ) const
+GeometryCoordinates UrtVectorTileFeature::GetMapboxCoordinatesInRange( MapItem *item, CoordRange coordRange ) const
 {
     Coordinate *origin = region.minimum;
     static const double extent = util::EXTENT;
@@ -329,7 +340,7 @@ GeometryCoordinates UrtVectorTileFeature::GetMapboxCoordinatesInRange( CoordRang
     const double lonMultiplier = extent / lonExtent;
     
     coord *coords;
-    __unused unsigned int nrCoords = (unsigned int) [mapItem lengthOfCoordinatesWithData:&coords];
+    __unused unsigned int nrCoords = (unsigned int) [item lengthOfCoordinatesWithData:&coords];
     
     GeometryCoordinates output;
     
@@ -356,6 +367,36 @@ GeometryCoordinates UrtVectorTileFeature::GetMapboxCoordinatesInRange( CoordRang
     
     return output;
 }
+    
+    
+GeometryCollection UrtVectorTileFeature::ClippedPolygonInLocalCoords( MapItem *item ) const
+{
+    GeometryCollection lines;
+    coord *coords = nil;
+    NSInteger nrCoords = [item lengthOfCoordinatesWithData:&coords];
+    
+    rayclipper::Polygon inputPolygon;
+    inputPolygon.resize( nrCoords );
+    
+    for ( NSInteger i = 0; i < nrCoords; i++ )
+    {
+        inputPolygon[i] = coords[i];
+    }
+    
+    rayclipper::rect rect = {region.minimum.coord, region.maximum.coord};
+    auto outPolygons = RayClipPolygon( inputPolygon, rect );
+    
+    for ( auto &outPolygon : outPolygons )
+    {
+        auto localPolygon = ConvertToMapboxCoordinates( outPolygon );
+        if ( localPolygon.size() >= 3 )
+        {
+            lines.emplace_back( localPolygon );
+        }
+    }
+    
+    return lines;
+}
 
 
 GeometryCollection UrtVectorTileFeature::getGeometries() const
@@ -365,49 +406,100 @@ GeometryCollection UrtVectorTileFeature::getGeometries() const
     //
     if ( ItemTypeIsRoad( mapItem.itemType ) )
     {
-        auto coordinateRanges = RelevantCoordinateRangesInTileRect();
+        auto coordinateRanges = RelevantCoordinateRangesInTileRect( mapItem );
         
         GeometryCollection lines;
         for ( auto range : coordinateRanges )
         {
-            auto coords = GetMapboxCoordinatesInRange( range );
+            auto coords = GetMapboxCoordinatesInRange( mapItem, range );
             lines.emplace_back( coords );
         }
         
         return lines;
     }
     
-    GeometryCollection lines;
-    coord *coords = nil;
-    NSInteger nrCoords = [mapItem lengthOfCoordinatesWithData:&coords];
-    
     if ( fromProxyTile )
     {
-        rayclipper::Polygon inputPolygon;
-        inputPolygon.resize( nrCoords );
-        
-        for ( NSInteger i = 0; i < nrCoords; i++ )
-        {
-            inputPolygon[i] = coords[i];
-        }
-        
-        rayclipper::rect rect = {region.minimum.coord, region.maximum.coord};
-        auto outPolygons = RayClipPolygon( inputPolygon, rect );
-        
-        for ( auto &outPolygon : outPolygons )
-        {
-            auto localPolygon = ConvertToMapboxCoordinates( outPolygon );
-            if ( localPolygon.size() >= 3 )
-            {
-                lines.emplace_back( localPolygon );
-            }
-        }
-        
-        return lines;
+        return ClippedPolygonInLocalCoords(mapItem);
     }
 
-    auto allUnclippedCoords = GetMapboxCoordinatesInRange( CoordRange( 0, nrCoords ) );
+    GeometryCollection lines;
+    NSInteger nrCoords = [mapItem lengthOfCoordinatesWithData:nil];
+    auto allUnclippedCoords = GetMapboxCoordinatesInRange( mapItem, CoordRange( 0, nrCoords ) );
     lines.emplace_back( allUnclippedCoords );
+    return lines;
+}
+    
+    
+class UrtVectorTileWaterFeature : public UrtVectorTileFeature
+{
+public:
+    UrtVectorTileWaterFeature( Region *region_ );
+    virtual unique_ptr<GeometryTileFeature> clone() override;
+    void addLandArea( MapItem *landArea, bool fromProxyTile );
+    
+    FeatureType getType() const override;
+    GeometryCollection getGeometries() const override;
+    
+private:
+    vector<pair<MapItem *, bool> > landAreas;
+};
+
+    
+UrtVectorTileWaterFeature::UrtVectorTileWaterFeature( Region *region_ )
+    : mbgl::UrtVectorTileFeature( NULL, region_, false )
+{
+    
+}
+    
+    
+unique_ptr<GeometryTileFeature> UrtVectorTileWaterFeature::clone()
+{
+    auto other = make_unique<UrtVectorTileWaterFeature>( region );
+    other->landAreas = landAreas;
+    return move(other);
+}
+
+    
+void UrtVectorTileWaterFeature::addLandArea( MapItem *landArea, bool fromProxyTile )
+{
+    landAreas.emplace_back( landArea, fromProxyTile );
+}
+    
+    
+FeatureType UrtVectorTileWaterFeature::getType() const
+{
+    return FeatureType::Polygon;
+}
+    
+    
+GeometryCollection UrtVectorTileWaterFeature::getGeometries() const
+{
+    vector<coord> outerPolygonCoords;
+    outerPolygonCoords.emplace_back( region.minimum.coord );
+    outerPolygonCoords.emplace_back( coord { region.maximum.coord.x, region.minimum.coord.y } );
+    outerPolygonCoords.emplace_back( region.maximum.coord );
+    outerPolygonCoords.emplace_back( coord { region.minimum.coord.x, region.maximum.coord.y } );
+    
+    GeometryCollection lines;
+    GeometryCoordinates line = ConvertToMapboxCoordinates( outerPolygonCoords );
+    lines.emplace_back( line );
+    
+    for ( auto landArea : landAreas )
+    {
+        if ( landArea.second )
+        {
+            GeometryCollection clippedPolyResults = ClippedPolygonInLocalCoords(landArea.first);
+            lines.insert( lines.end(), clippedPolyResults.begin(), clippedPolyResults.end() );
+        }
+        else
+        {
+            NSInteger nrCoords = [landArea.first lengthOfCoordinatesWithData:nil];
+            GeometryCoordinates landCoords = GetMapboxCoordinatesInRange( landArea.first, CoordRange( 0, nrCoords ) );
+            lines.emplace_back( landCoords );
+        }
+    }
+    
     return lines;
 }
 
@@ -415,29 +507,30 @@ GeometryCollection UrtVectorTileFeature::getGeometries() const
 class UrtTileLayer : public GeometryTileLayer {
 public:
     UrtTileLayer( string name_, Region *region_ ) { name = name_; region = region_; }
-    void addMapItem( MapItem *mapItem, bool formProxyTile );
+    virtual void addMapItem( MapItem *mapItem, bool fromProxyTile );
+    virtual void finalizeInternalItems() {}     // No more items to add
     
-    std::size_t featureCount() const override { return features.size(); }
-    std::unique_ptr<GeometryTileFeature> getFeature(std::size_t) const override;
-    std::string getName() const override;
+    virtual std::size_t featureCount() const override { return features.size(); }
+    virtual std::unique_ptr<GeometryTileFeature> getFeature(std::size_t) const override;
+    virtual std::string getName() const override;
     
-private:
+protected:
     Region *region;
     string name;
-    vector<pair<MapItem *, bool> > features;
+    vector<unique_ptr<UrtVectorTileFeature> > features;
 };
     
     
 void UrtTileLayer::addMapItem( MapItem *mapItem, bool fromProxyTile )
 {
-    features.emplace_back( mapItem, fromProxyTile );
+    auto feature = make_unique<UrtVectorTileFeature>(mapItem, region, fromProxyTile);
+    features.emplace_back( move(feature) );
 }
-
     
     
 unique_ptr<GeometryTileFeature> UrtTileLayer::getFeature(std::size_t i) const
 {
-    return std::make_unique<UrtVectorTileFeature>(features.at(i).first, region, features.at(i).second);
+    return features.at(i)->clone();
 }
     
     
@@ -445,34 +538,101 @@ string UrtTileLayer::getName() const
 {
     return name;
 }
+    
+
+class WaterTileLayer : public UrtTileLayer
+{
+public:
+    WaterTileLayer( string name_, Region *region_ ) : UrtTileLayer( name_, region_) { groundType = type_none; }
+    virtual void addMapItem( MapItem *mapItem, bool fromProxyTile );
+    virtual void finalizeInternalItems();
+    
+    void setWholeGroundType( item_type groundType );
+private:
+    vector<pair<MapItem *, bool> > landFeatures;
+    vector<pair<MapItem *, bool> > waterFeatures;
+    item_type groundType;
+};
+    
+    
+void WaterTileLayer::addMapItem( MapItem *mapItem, bool fromProxyTile )
+{
+    if ( mapItem.itemType == type_poly_water )
+    {
+        waterFeatures.emplace_back( mapItem, fromProxyTile );
+    }
+    else if ( mapItem.itemType == type_poly_land )
+    {
+        landFeatures.emplace_back( mapItem, fromProxyTile );
+    }
+    else
+    {
+        assert( false && "Can only handle water and land types" );
+    }
+}
+
+    
+void WaterTileLayer::finalizeInternalItems()
+{
+    //
+    //  Ground is anything that's not water
+    //
+    if ( groundType != type_none && groundType != type_whole_area_type_water )
+    {
+        for ( auto waterItem : waterFeatures )
+        {
+            UrtTileLayer::addMapItem( waterItem.first, waterItem.second );
+        }
+        
+        // ToDo - Handle land coverage feature
+        return;
+    }
+    
+    //
+    //  Whole area is water
+    //
+    auto feature = make_unique<UrtVectorTileWaterFeature>(region);
+    
+    for ( auto &landItem : landFeatures )
+    {
+        feature->addLandArea( landItem.first, landItem.second );
+    }
+    
+    features.emplace_back( move(feature) );
+}
+
+
+void WaterTileLayer::setWholeGroundType( item_type groundType_ )
+{
+    //assert ( wholeTileGroundType == type_none );
+    groundType = groundType_;
+}
 
 
 typedef enum
 {
-    LayerPolyLand = 0,
-    LayerPolyWood,
+    LayerPolyWood = 0,
     LayerPolyWater,
     LayerRoad,
-    LayerLine,
+    LayerOther,
     LayerPlaceLabel,
     LayerCount
 } LayerType;
     
 const string LAYER_UNDEFINED = "UNDEFINED";
-vector<string> layerNames = { LAYER_UNDEFINED, "landuse", "water", "road", LAYER_UNDEFINED, "place_label"  };
+vector<string> layerNames = { "landuse", "water", "road", LAYER_UNDEFINED, "place_label"  };
 
 
 LayerType LayerForItemType( unsigned int itemType )
 {
     switch (itemType)
     {
+        case type_poly_land:
         case type_poly_water:
             return LayerPolyWater;
         case type_poly_wood:
         case type_poly_park:
             return LayerPolyWood;
-        case type_poly_land:
-            return LayerPolyLand;
         default:
             if ( ItemTypeIsPlaceLabel ( itemType ) )
             {
@@ -484,7 +644,7 @@ LayerType LayerForItemType( unsigned int itemType )
             }
             else
             {
-                return LayerLine;
+                return LayerOther;
             }
             break;
     }
@@ -528,6 +688,7 @@ private:
     std::shared_ptr< LayersType > layers;
     void parse() const;
     void addMapTile( MapTile *mapTile, bool wasProxyTile ) const;
+    item_type wholeTileGroundType;
 };
     
     
@@ -540,7 +701,14 @@ UrtVectorTileData::UrtVectorTileData(std::shared_ptr<UrtTileData> data_)
     layers = shared_ptr< LayersType >( new LayersType() );
     for ( auto layerName : layerNames )
     {
-        layers->emplace_back(shared_ptr<UrtTileLayer> (new UrtTileLayer(layerName, region)));
+        if ( layerName == "water" )
+        {
+            layers->emplace_back(shared_ptr<UrtTileLayer> (new WaterTileLayer(layerName, region)));
+        }
+        else
+        {
+            layers->emplace_back(shared_ptr<UrtTileLayer> (new UrtTileLayer(layerName, region)));
+        }
     }
 }
 
@@ -596,16 +764,28 @@ void UrtVectorTileData::addMapTile( MapTile *mapTile, bool fromProxyTile ) const
         LayerType layer = LayerForItemType( itemType );
         layers->at(layer)->addMapItem( mapItem, fromProxyTile );
     }
-
+    
+    item_type tileCover = [mapTile completeGroundType];
+    if ( tileCover != type_none )
+    {
+        auto waterLayer = dynamic_cast<WaterTileLayer *>(layers->at(LayerPolyWater).get());
+        assert( waterLayer != nullptr );
+        waterLayer->setWholeGroundType(tileCover);
+    }
 }
 
 
 void UrtVectorTileData::parse() const
 {
     NSArray<MapTile *> *mapTiles = ( __bridge NSArray * ) data->maptilesPtr();
-
+    NSString *tilename = ( __bridge NSString * ) data->tilenameNSString();
+    NSInteger tileLevel = tilename.length;
+    
     for ( MapTile *mapTile in mapTiles )
     {
+        if ( mapTile.isPlanetOceanMapTile && mapTiles.count > 1 && tileLevel >= 8 )     // ToDo - remove
+            continue;
+        
         bool blankNode = false;
         MapTile *tile = mapTile;
         
@@ -617,6 +797,8 @@ void UrtVectorTileData::parse() const
         
         addMapTile( tile, blankNode );
     }
+    
+    layers->at(LayerPolyWater)->finalizeInternalItems();
 }
     
 
