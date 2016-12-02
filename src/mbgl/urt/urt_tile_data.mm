@@ -22,19 +22,19 @@ UrtTileData::~UrtTileData()
 {
     if ( data != NULL )
     {
-        NSArray *d = ( __bridge_transfer NSArray * ) data;
+        __unused NSArray *d = ( __bridge_transfer NSArray * ) data;
         data = NULL;
         
-        NSLog(@"Freeing %@", d);
+        //NSLog(@"Freeing %@", d);
     }
 
 
     if ( tilename != NULL )
     {
-        NSString *n = ( __bridge_transfer NSString * ) tilename;
+        __unused NSString *n = ( __bridge_transfer NSString * ) tilename;
         tilename = NULL;
         
-        NSLog(@"Freeing %@", n);
+        //NSLog(@"Freeing %@", n);
     }
 }
 

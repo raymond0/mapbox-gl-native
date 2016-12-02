@@ -329,7 +329,7 @@ GeometryCoordinates UrtVectorTileFeature::GetMapboxCoordinatesInRange( CoordRang
     const double lonMultiplier = extent / lonExtent;
     
     coord *coords;
-    unsigned int nrCoords = (unsigned int) [mapItem lengthOfCoordinatesWithData:&coords];
+    __unused unsigned int nrCoords = (unsigned int) [mapItem lengthOfCoordinatesWithData:&coords];
     
     GeometryCoordinates output;
     
@@ -503,9 +503,12 @@ UrtVectorTile::UrtVectorTile(const OverscaledTileID& id_,
 
     
 void UrtVectorTile::setNecessity(Necessity necessity) {
-    loader.setNecessity(necessity);
+    if ( necessity == Resource::Required )
+    {
+        loader.setNecessity(necessity);
+    }   
 }
-
+    
     
 class UrtVectorTileData : public GeometryTileData {
 public:
@@ -549,12 +552,12 @@ const GeometryTileLayer* UrtVectorTileData::getLayer(const std::string& name) co
         parsed = true;
         
         assert( data != nullptr );
-        NSString *tilename = ( __bridge NSString * ) data->tilenameNSString();
-        printf( "Parsing tile %s\n", tilename.UTF8String );
+        //NSString *tilename = ( __bridge NSString * ) data->tilenameNSString();
+        //printf( "Parsing tile %s\n", tilename.UTF8String );
         
         parse();
         
-        printf( "Finished parsing tile %s\n", tilename.UTF8String );
+        //printf( "Finished parsing tile %s\n", tilename.UTF8String );
     }
     
     auto layerPosition = std::find( layerNames.begin(), layerNames.end(), name );

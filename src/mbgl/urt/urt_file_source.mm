@@ -251,7 +251,7 @@ NSString *URTFileSource::Impl::VectorToUrTileName( NSString *urlStr )
         }
     }
     
-    NSLog(@"Translated %ld/%ld/%ld to %@", (long)z, (long)x, (long)y, result);
+    //NSLog(@"Translated %ld/%ld/%ld to %@", (long)z, (long)x, (long)y, result);
     
     return result;
 }
