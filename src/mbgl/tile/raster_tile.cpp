@@ -33,7 +33,8 @@ void RasterTile::setError(std::exception_ptr err) {
 
 void RasterTile::setData(std::shared_ptr<const std::string> data,
                              optional<Timestamp> modified_,
-                             optional<Timestamp> expires_) {
+                         optional<Timestamp> expires_,
+                         std::shared_ptr<UrtTileData>) {
     modified = modified_;
     expires = expires_;
     worker.invoke(&RasterTileWorker::parse, data);

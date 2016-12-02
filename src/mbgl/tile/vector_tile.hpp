@@ -21,7 +21,8 @@ public:
     void setNecessity(Necessity) final;
     void setData(std::shared_ptr<const std::string> data,
                  optional<Timestamp> modified,
-                 optional<Timestamp> expires);
+                 optional<Timestamp> expires,
+                 std::shared_ptr<UrtTileData> urtFile);
 
 private:
     TileLoader<VectorTile> loader;

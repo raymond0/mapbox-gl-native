@@ -84,7 +84,8 @@ void VectorTile::setNecessity(Necessity necessity) {
 
 void VectorTile::setData(std::shared_ptr<const std::string> data_,
                          optional<Timestamp> modified_,
-                         optional<Timestamp> expires_) {
+                         optional<Timestamp> expires_,
+                         std::shared_ptr<UrtTileData>) {
     modified = modified_;
     expires = expires_;
 
