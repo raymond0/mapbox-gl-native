@@ -11,14 +11,15 @@
 
 #include <stdio.h>
 #include <vector>
+#include <UrtFile/UrtFile.h>
     
 namespace rayclipper {
     
-struct coord {
+/*struct coord {
     int x;
     int y;
 };
-
+*/
 struct rect {struct coord l,h;};
 typedef std::vector<struct coord> Polygon;
 

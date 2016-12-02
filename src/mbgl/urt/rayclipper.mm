@@ -129,7 +129,9 @@ struct coord InterestionOfRect( const struct coord &p1, const struct coord &p2, 
         }
     }
     
-    assert( 0 );
+    assert( false );
+    struct coord failed;
+    return failed;  // Some compiler configs shout error otherwise
 }
     
     
@@ -387,6 +389,7 @@ EdgeType EdgeForCoord( struct coord coord, struct rect rect )
     if ( coord.x == rect.l.x ) return EdgeLeft;
     
     assert ( false );
+    return EdgeLeft;    // Some compiler configs shout error otherwise
 }
 
 
