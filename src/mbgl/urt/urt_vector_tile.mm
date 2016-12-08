@@ -473,24 +473,101 @@ FeatureType UrtVectorTileWaterFeature::getType() const
 }
     
     
+bool PolygonMatchesExtent( const GeometryCoordinates &polygon )
+{
+    if ( polygon.size() != 4 )
+    {
+        return false;
+    }
+    
+    size_t origin = SIZE_MAX;
+    
+    for ( size_t i = 0; i < 4; i++ )
+    {
+        if ( polygon[i].x == 0 && polygon[i].y == 0 )
+        {
+            origin = i;
+            break;
+        }
+    }
+    
+    if ( origin == SIZE_MAX )
+    {
+        return false;
+    }
+    
+    if ( polygon[(origin + 1) % 4].x != util::EXTENT || polygon[(origin + 1) % 4].y != 0 ||
+         polygon[(origin + 2) % 4].x != util::EXTENT || polygon[(origin + 2) % 4].y != util::EXTENT ||
+         polygon[(origin + 3) % 4].x != 0 || polygon[(origin + 3) % 4].y != util::EXTENT )
+    {
+        return false;
+    }
+    
+    return true;
+}
+    
+    
+/*long long GeomArea(GeometryCoordinates c)
+{
+    long long area=0;
+    size_t i,j=0;
+    for ( i=0 ; i < c.size(); i++ )
+    {
+        if (++j == c.size())
+            j=0;
+        area+=(long long)(c[i].x+c[j].x)*(c[i].y-c[j].y);
+    }
+    return area/2;
+}*/
+    
+    
 GeometryCollection UrtVectorTileWaterFeature::getGeometries() const
 {
-    vector<coord> outerPolygonCoords;
-    outerPolygonCoords.emplace_back( region.minimum.coord );
-    outerPolygonCoords.emplace_back( coord { region.maximum.coord.x, region.minimum.coord.y } );
-    outerPolygonCoords.emplace_back( region.maximum.coord );
-    outerPolygonCoords.emplace_back( coord { region.minimum.coord.x, region.maximum.coord.y } );
-    
     GeometryCollection lines;
-    GeometryCoordinates line = ConvertToMapboxCoordinates( outerPolygonCoords );
-    lines.emplace_back( line );
+
+    //
+    //  Add a border of 1 all around the edge. Tangent edges on valid polygons *sometimes* blow
+    //  something up further down the line without this, and invalidate all land areas.
+    //  Docs do state we need to avoid tanget edges.
+    //
+    GeometryCoordinates line;
+    line.emplace_back( GeometryCoordinate(0 - 1,0 - 1) );
+    line.emplace_back( GeometryCoordinate(0 - 1,util::EXTENT + 1) );
+    line.emplace_back( GeometryCoordinate(util::EXTENT + 1, util::EXTENT + 1) );
+    line.emplace_back( GeometryCoordinate(util::EXTENT + 1, 0 - 1) );
     
-    for ( auto landArea : landAreas )
+    lines.emplace_back( line );
+    if ( landAreas.size() == 0 )
+        return lines;
+    
+    for ( auto &landArea : landAreas )
     {
-        if ( landArea.second )
+        if ( landArea.second )      // Is proxy tile
         {
             GeometryCollection clippedPolyResults = ClippedPolygonInLocalCoords(landArea.first);
-            lines.insert( lines.end(), clippedPolyResults.begin(), clippedPolyResults.end() );
+            for ( auto &poly : clippedPolyResults )
+            {
+                assert( poly.size() >= 3 );
+                
+                if ( poly.size() == 4 )
+                {
+                    if ( PolygonMatchesExtent( poly ) )
+                    {
+                        GeometryCollection emptyLines;
+                        return emptyLines;
+                    }
+                }
+                
+                if ( poly.front() != poly.back() )
+                {
+                    poly.emplace_back(poly.front());
+                }
+            }
+            
+            if ( clippedPolyResults.size() > 0 )
+            {
+                lines.insert( lines.end(), clippedPolyResults.begin(), clippedPolyResults.end() );
+            }
         }
         else
         {
@@ -499,6 +576,51 @@ GeometryCollection UrtVectorTileWaterFeature::getGeometries() const
             lines.emplace_back( landCoords );
         }
     }
+    
+#ifdef DUMP_POLYGON_INFO
+    printf("========== Land Polygons start ==========\n");
+    
+    for ( auto &polygon : lines )
+    {
+        printf("---------- Land Polygon start ---------- Area: %lld\n", GeomArea(polygon));
+        for ( auto &coord : polygon )
+        {
+            printf( "Coord: %d, %d\n", coord.x, coord.y );
+        }
+    }
+#endif
+    
+    
+#ifdef DUMP_POLYGON_INTERSECTIONS
+    for ( size_t i = lines.size() - 1; i > 0; i-- )
+    {
+        auto &firstPolygonCoords = lines[i];
+        vector<coord> firstPolygon;
+        
+        for ( auto c : firstPolygonCoords )
+        {
+            struct coord coord = { c.x, c.y };
+            firstPolygon.emplace_back(coord);
+        }
+        
+        for ( size_t j = i -1; j > 1; j-- )
+        {
+            auto &secondPolygon = lines[j];
+
+            for ( auto &testCoord : secondPolygon )
+            {
+                struct coord coord = { testCoord.x, testCoord.y };
+                if ( rayclipper::PointIsInsidePolygon(firstPolygon, coord) )
+                {
+                    printf( "Intersection Coord: %d, %d\n", coord.x, coord.y );
+                    //lines.erase( lines.begin() + j );
+                    //j--;
+                    //break;
+                }
+            }
+        }
+    }
+#endif
     
     return lines;
 }
@@ -687,7 +809,8 @@ private:
     typedef std::vector<std::shared_ptr<UrtTileLayer> > LayersType;
     std::shared_ptr< LayersType > layers;
     void parse() const;
-    void addMapTile( MapTile *mapTile, bool wasProxyTile ) const;
+    void addMapTile( MapTile *mapTile, bool wasProxyTile, NSInteger tileLevel ) const;
+    bool shouldIncludeItemType( unsigned int itemType, NSInteger tileLevel ) const;
     item_type wholeTileGroundType;
 };
     
@@ -738,9 +861,60 @@ const GeometryTileLayer* UrtVectorTileData::getLayer(const std::string& name) co
     assert ( index < LayerCount );
     return layers->at(index).get();
 }
+    
+    
+bool UrtVectorTileData::shouldIncludeItemType( unsigned int itemType, NSInteger tileLevel ) const
+{
+    if ( ! ItemTypeIsRoad( itemType ) )
+        return true;
+    
+    switch ( itemType )
+    {
+        case type_living_street:
+        case type_street_parking_lane:
+        case type_street_pedestrian:
+        case type_street_service:
+            return tileLevel >= 15;
+            
+        case type_street_nopass:
+        case type_street_0:
+        case type_street_residential_city:
+        case type_street_residential_land:
+            return tileLevel >= 13;
+            
+        case type_street_tertiary_city:
+        case type_street_tertiary_land:
+        case type_ramp_tertiary:
+            return tileLevel >= 11;
+
+        case type_street_secondary_city:
+        case type_street_secondary_land:
+        case type_ramp_secondary:
+            return tileLevel >= 9;
+
+        case type_street_primary_city:
+        case type_street_primary_land:
+        case type_ramp_primary:
+            return tileLevel >= 7;
+            
+        case type_highway_city:
+        case type_street_motorway:  // Trunk link
+        case type_highway_land:
+        case type_ramp_motorway:
+        case type_street_trunk:
+        case type_ramp_trunk:
+        case type_roundabout:
+            return tileLevel >= 6;
+            
+        default:
+            assert( false && "Unhandled road type" );
+    }
+
+    return true;
+}
 
     
-void UrtVectorTileData::addMapTile( MapTile *mapTile, bool fromProxyTile ) const
+void UrtVectorTileData::addMapTile( MapTile *mapTile, bool fromProxyTile, NSInteger tileLevel ) const
 {
     NSEnumerator *mapItemEnumerator = [mapTile mapItemEnumerator];
     MapItem *mapItem;
@@ -759,6 +933,11 @@ void UrtVectorTileData::addMapTile( MapTile *mapTile, bool fromProxyTile ) const
             }
             wasParentRef = YES;
             itemType = mapItem.itemType;
+        }
+        
+        if ( ! shouldIncludeItemType( mapItem.itemType, tileLevel ) )
+        {
+            continue;
         }
         
         LayerType layer = LayerForItemType( itemType );
@@ -795,7 +974,7 @@ void UrtVectorTileData::parse() const
             tile = tile.parent;
         }
         
-        addMapTile( tile, blankNode );
+        addMapTile( tile, blankNode, tileLevel );
     }
     
     layers->at(LayerPolyWater)->finalizeInternalItems();
