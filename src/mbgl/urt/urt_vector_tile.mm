@@ -437,12 +437,14 @@ public:
     UrtVectorTileWaterFeature( Region *region_ );
     virtual unique_ptr<GeometryTileFeature> clone() override;
     void addLandArea( MapItem *landArea, bool fromProxyTile );
+    void addWaterAreas( vector<pair<MapItem *, bool> >::iterator first, vector<pair<MapItem *, bool> >::iterator last );
     
     FeatureType getType() const override;
     GeometryCollection getGeometries() const override;
     
 private:
     vector<pair<MapItem *, bool> > landAreas;
+    vector<pair<MapItem *, bool> > waterAreas;
 };
 
     
@@ -457,6 +459,7 @@ unique_ptr<GeometryTileFeature> UrtVectorTileWaterFeature::clone()
 {
     auto other = make_unique<UrtVectorTileWaterFeature>( region );
     other->landAreas = landAreas;
+    other->waterAreas = waterAreas;
     return move(other);
 }
 
@@ -465,7 +468,13 @@ void UrtVectorTileWaterFeature::addLandArea( MapItem *landArea, bool fromProxyTi
 {
     landAreas.emplace_back( landArea, fromProxyTile );
 }
+
     
+void UrtVectorTileWaterFeature::addWaterAreas( vector<pair<MapItem *, bool> >::iterator first, vector<pair<MapItem *, bool> >::iterator last )
+{
+    waterAreas.insert( waterAreas.end(), first, last );
+}
+
     
 FeatureType UrtVectorTileWaterFeature::getType() const
 {
@@ -540,8 +549,15 @@ GeometryCollection UrtVectorTileWaterFeature::getGeometries() const
     if ( landAreas.size() == 0 )
         return lines;
     
+    bool totalLandCoverage = false;
+    
     for ( auto &landArea : landAreas )
     {
+        if ( totalLandCoverage )
+        {
+            break;
+        }
+        
         if ( landArea.second )      // Is proxy tile
         {
             GeometryCollection clippedPolyResults = ClippedPolygonInLocalCoords(landArea.first);
@@ -553,8 +569,9 @@ GeometryCollection UrtVectorTileWaterFeature::getGeometries() const
                 {
                     if ( PolygonMatchesExtent( poly ) )
                     {
-                        GeometryCollection emptyLines;
-                        return emptyLines;
+                        totalLandCoverage = true;
+                        lines.clear();
+                        break;
                     }
                 }
                 
@@ -562,6 +579,34 @@ GeometryCollection UrtVectorTileWaterFeature::getGeometries() const
                 {
                     poly.emplace_back(poly.front());
                 }
+                
+                lines.emplace_back( poly );
+            }
+        }
+        else
+        {
+            NSInteger nrCoords = [landArea.first lengthOfCoordinatesWithData:nil];
+            GeometryCoordinates landCoords = GetMapboxCoordinatesInRange( landArea.first, CoordRange( 0, nrCoords ) );
+            
+            if ( landCoords.size() < 3 )
+            {
+                continue;
+            }
+
+            lines.emplace_back( landCoords );
+        }
+    }
+    
+    
+    for ( auto &waterArea : waterAreas )
+    {
+        if ( waterArea.second )      // Is proxy tile
+        {
+            GeometryCollection clippedPolyResults = ClippedPolygonInLocalCoords(waterArea.first);
+            for ( auto &poly : clippedPolyResults )
+            {
+                assert( poly.size() >= 3 );
+                reverse( poly.begin(), poly.end() );
             }
             
             if ( clippedPolyResults.size() > 0 )
@@ -571,9 +616,14 @@ GeometryCollection UrtVectorTileWaterFeature::getGeometries() const
         }
         else
         {
-            NSInteger nrCoords = [landArea.first lengthOfCoordinatesWithData:nil];
-            GeometryCoordinates landCoords = GetMapboxCoordinatesInRange( landArea.first, CoordRange( 0, nrCoords ) );
-            lines.emplace_back( landCoords );
+            NSInteger nrCoords = [waterArea.first lengthOfCoordinatesWithData:nil];
+            GeometryCoordinates polyCoords = GetMapboxCoordinatesInRange( waterArea.first, CoordRange( 0, nrCoords ) );
+            if ( polyCoords.size() < 3 )
+            {
+                continue;
+            }
+            reverse( polyCoords.begin(), polyCoords.end() );
+            lines.emplace_back( polyCoords );
         }
     }
     
@@ -719,6 +769,8 @@ void WaterTileLayer::finalizeInternalItems()
     {
         feature->addLandArea( landItem.first, landItem.second );
     }
+    
+    feature->addWaterAreas( waterFeatures.begin(), waterFeatures.end() );
     
     features.emplace_back( move(feature) );
 }
