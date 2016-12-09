@@ -156,7 +156,7 @@ unordered_map<string,Value> UrtVectorTileFeature::GetMapboxTags()
     
     if ( ItemTypeIsRoad(mapItem.itemType) )
     {
-        mapboxTags.insert({"oneway", (string) "false"});   // ToDo
+        mapboxTags.insert({"oneway", (string) ( [mapItem oneWayType] != TwoWay ? "true" : "false" )});   // ToDo
         mapboxTags.insert({"structure", (string) "none"}); // ToDo
     }
     
@@ -747,7 +747,7 @@ void WaterTileLayer::addMapItem( MapItem *mapItem, bool fromProxyTile )
 void WaterTileLayer::finalizeInternalItems()
 {
     //
-    //  Ground is anything that's not water
+    //  Ground is anything that's not water (thus "nothing" is water, as is water)
     //
     if ( groundType != type_none && groundType != type_whole_area_type_water )
     {
