@@ -1,0 +1,47 @@
+//
+//  urt_tile_layer.cpp
+//  mbgl
+//
+//  Created by Ray Hunter on 09/12/2016.
+//
+//
+
+#include "urt_tile_layer.hpp"
+#include "urt_vector_tile_road_feature.hpp"
+#include "urt_vector_tile_place_label_feature.hpp"
+
+namespace mbgl {
+
+void UrtTileLayer::addMapItem( MapItem *mapItem, bool fromProxyTile )
+{
+    auto feature = make_unique<UrtVectorTileFeature>(mapItem, region, fromProxyTile);
+    features.emplace_back( move(feature) );
+}
+
+
+unique_ptr<GeometryTileFeature> UrtTileLayer::getFeature(std::size_t i) const
+{
+    return features.at(i)->clone();
+}
+
+
+string UrtTileLayer::getName() const
+{
+    return name;
+}
+    
+    
+void UrtRoadTileLayer::addMapItem( MapItem *mapItem, bool fromProxyTile )
+{
+    auto feature = make_unique<UrtVectorTileRoadFeature>(mapItem, region, fromProxyTile);
+    features.emplace_back( move(feature) );
+}
+
+    
+void UrtPlaceTileLayer::addMapItem( MapItem *mapItem, bool fromProxyTile )
+{
+    auto feature = make_unique<UrtVectorTilePlaceLabelFeature>(mapItem, region, fromProxyTile);
+    features.emplace_back( move(feature) );
+}
+
+}
