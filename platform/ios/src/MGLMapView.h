@@ -81,6 +81,8 @@ IB_DESIGNABLE
 
 #pragma mark Creating Instances
 
+- (instancetype)initWithFrame:(CGRect)frame usingUrtFileSource:(bool)urtFileSource;
+
 /**
  Initializes and returns a newly allocated map view with the specified frame
  and the default style.

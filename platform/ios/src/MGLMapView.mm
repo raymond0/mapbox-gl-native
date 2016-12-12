@@ -314,6 +314,20 @@ public:
 
 #pragma mark - Setup & Teardown -
 
+
+- (instancetype)initWithFrame:(CGRect)frame usingUrtFileSource:(bool)urtFileSource
+{
+    mbgl::URTFileSource::usingUrtSource = urtFileSource;
+
+    if (self = [super initWithFrame:frame])
+    {
+        [self commonInit];
+        self.styleURL = nil;
+    }
+    return self;
+}
+
+
 - (instancetype)initWithFrame:(CGRect)frame
 {
     if (self = [super initWithFrame:frame])
@@ -408,13 +422,20 @@ public:
     [[NSFileManager defaultManager] removeItemAtPath:fileCachePath error:NULL];
 
     // setup mbgl map
-    const std::array<uint16_t, 2> size = {{ static_cast<uint16_t>(self.bounds.size.width),
-                                            static_cast<uint16_t>(self.bounds.size.height) }};
-    //mbgl::FileSource *mbglFileSource = [MGLOfflineStorage sharedOfflineStorage].mbglFileSource;
-    _urtFileSource = std::shared_ptr<mbgl::URTFileSource>(new mbgl::URTFileSource);
+    mbgl::FileSource *mbglFileSource;
+    if (  mbgl::URTFileSource::usingUrtSource )
+    {
+        _urtFileSource = std::shared_ptr<mbgl::URTFileSource>(new mbgl::URTFileSource);
+        mbglFileSource = _urtFileSource.get();
+    }
+    else
+    {
+        mbglFileSource = [MGLOfflineStorage sharedOfflineStorage].mbglFileSource;
+    }
+
     const float scaleFactor = [UIScreen instancesRespondToSelector:@selector(nativeScale)] ? [[UIScreen mainScreen] nativeScale] : [[UIScreen mainScreen] scale];
     _mbglThreadPool = new mbgl::ThreadPool(4);
-    _mbglMap = new mbgl::Map(*_mbglView, size, scaleFactor, *_urtFileSource, *_mbglThreadPool, mbgl::MapMode::Continuous, mbgl::GLContextMode::Unique, mbgl::ConstrainMode::None, mbgl::ViewportMode::Default);
+    _mbglMap = new mbgl::Map(*_mbglView, self.size, scaleFactor, *mbglFileSource, *_mbglThreadPool, mbgl::MapMode::Continuous, mbgl::GLContextMode::Unique, mbgl::ConstrainMode::None, mbgl::ViewportMode::Default);
     [self validateTileCacheSize];
 
     // start paused if in IB

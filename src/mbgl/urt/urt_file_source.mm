@@ -265,6 +265,8 @@ NSString *URTFileSource::Impl::VectorToUrTileName( NSString *urlStr )
     return replacementData;
 }*/
 
+bool URTFileSource::usingUrtSource = false;
+    
     
 URTFileSource::URTFileSource() : impl( std::unique_ptr<URTFileSource::Impl>(new URTFileSource::Impl) )
 {
