@@ -27,7 +27,8 @@ bool ItemTypeIsRoad( unsigned int type )
     bool isRoad = ( ( type_street_nopass <= type && type <= type_roundabout ) ||
                    type == type_living_street ||
                    type == type_street_parking_lane ||
-                   type == type_street_service );
+                   type == type_street_service ||
+                   type == type_street_pedestrian);
     
     return isRoad;
 }

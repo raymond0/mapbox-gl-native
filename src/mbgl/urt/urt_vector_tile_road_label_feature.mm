@@ -103,6 +103,9 @@ UrtVectorTileFeature::MapboxTagsPtr UrtVectorTileRoadLabelFeature::GetMapboxTags
         case type_street_parking_lane:
             mapboxTags->insert({"class", (string) "service"});
             break;
+        case type_street_pedestrian:
+            mapboxTags->insert({"class", (string) "pedestrian"});
+            break;
         default:
             assert( false );
             return mapboxTags;

@@ -70,6 +70,8 @@ UrtVectorTileRoadFeature::MapboxTagsPtr UrtVectorTileRoadFeature::GetMapboxTags(
                 return pair<string, string>("service", "service");
             case type_street_parking_lane:
                 return pair<string, string>("service", "service:parking_aisle");
+            case type_street_pedestrian:
+                return pair<string, string>("pedestrian", "pedestrian");
             default:
                 assert( false );
                 return pair<string, string>("", "");
