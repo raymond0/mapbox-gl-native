@@ -9,6 +9,7 @@
 #include "urt_tile_layer.hpp"
 #include "urt_vector_tile_road_feature.hpp"
 #include "urt_vector_tile_place_label_feature.hpp"
+#include "urt_vector_tile_road_label_feature.hpp"
 
 namespace mbgl {
 
@@ -28,6 +29,17 @@ unique_ptr<GeometryTileFeature> UrtTileLayer::getFeature(std::size_t i) const
 string UrtTileLayer::getName() const
 {
     return name;
+}
+    
+    
+void UrtRoadLabelTileLayer::addMapItem( MapItem *mapItem, bool fromProxyTile )
+{
+    auto feature = make_unique<UrtVectorTileRoadLabelFeature>(mapItem, region, fromProxyTile);
+    
+    if ( feature->shouldRender() )
+    {
+        features.emplace_back( move(feature) );
+    }
 }
     
     

@@ -131,7 +131,7 @@ UrtVectorTileData::UrtVectorTileData(std::shared_ptr<UrtTileData> data_)
     layers->emplace_back(shared_ptr<UrtTileLayer> (new UrtTileLayer("landuse", region)));
     layers->emplace_back(shared_ptr<UrtTileLayer> (new WaterTileLayer("water", region)));
     layers->emplace_back(shared_ptr<UrtTileLayer> (new UrtRoadTileLayer("road", region)));
-    layers->emplace_back(shared_ptr<UrtTileLayer> (new UrtTileLayer("road_label", region)));
+    layers->emplace_back(shared_ptr<UrtTileLayer> (new UrtRoadLabelTileLayer("road_label", region)));
     layers->emplace_back(shared_ptr<UrtTileLayer> (new UrtPlaceTileLayer("place_label", region)));
     
     assert( layers->size() == LayerCount );
@@ -250,6 +250,11 @@ void UrtVectorTileData::addMapTile( MapTile *mapTile, bool fromProxyTile, NSInte
         }
         
         layers->at(layer)->addMapItem( mapItem, fromProxyTile );
+        
+        if ( layer == LayerRoad )
+        {
+            layers->at(LayerRoadLabel)->addMapItem( mapItem, fromProxyTile );
+        }
     }
     
     item_type tileCover = [mapTile completeGroundType];

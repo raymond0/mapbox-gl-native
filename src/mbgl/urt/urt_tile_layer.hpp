@@ -35,6 +35,14 @@ protected:
 };
     
     
+class UrtRoadLabelTileLayer : public UrtTileLayer
+{
+public:
+    UrtRoadLabelTileLayer( string name_, Region *region_ ) : UrtTileLayer ( name_, region_ ) {}
+    virtual void addMapItem( MapItem *mapItem, bool fromProxyTile );
+};
+
+    
 class UrtRoadTileLayer : public UrtTileLayer
 {
 public:
