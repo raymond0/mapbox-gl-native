@@ -25,6 +25,9 @@ typedef std::vector<struct coord> Polygon;
 
 std::vector<Polygon> RayClipPolygon( const Polygon &inputPolygon, struct rect rect );
 
+bool PointIsInsidePolygon(const Polygon &coords, const struct coord &point);
+void CleanPolygon( const Polygon &inputPolygon, Polygon &outputPolygon );
+
 }
 
 

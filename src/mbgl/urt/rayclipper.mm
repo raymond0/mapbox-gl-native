@@ -226,6 +226,47 @@ bool LineIntersetsRect(const struct coord &p1, const struct coord &p2, const str
 }
     
     
+bool LineIntersetsLine(const struct coord &line1Start, const struct coord &line1End,
+                       const struct coord &line2Start, const struct coord &line2End,
+                       struct coord &intersection)
+{
+    struct coord line1Min = { min(line1Start.x, line1End.x), min( line1Start.y, line1End.y ) };
+    struct coord line1Max = { max(line1Start.x, line1End.x), max( line1Start.y, line1End.y ) };
+    struct coord line2Min = { min(line2Start.x, line2End.x), min( line2Start.y, line2End.y ) };
+    struct coord line2Max = { max(line2Start.x, line2End.x), max( line2Start.y, line2End.y ) };
+    
+    if ( line1Max.x <= line2Min.x ) return false;
+    if ( line1Min.x >= line2Max.x ) return false;
+    if ( line1Max.y <= line2Min.y ) return false;
+    if ( line1Min.y >= line2Max.y ) return false;
+    
+    double x1 = line1Start.x, x2 = line1End.x, x3 = line2Start.x, x4 = line2End.x;
+    double y1 = line1Start.y, y2 = line1End.y, y3 = line2Start.y, y4 = line2End.y;
+    
+    double d = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+    // If d is zero, there is no intersection
+    if (d <= __DBL_EPSILON__) return false;
+    
+    // Get the x and y
+    double pre = (x1*y2 - y1*x2), post = (x3*y4 - y3*x4);
+    double x = ( pre * (x3 - x4) - (x1 - x2) * post ) / d;
+    double y = ( pre * (y3 - y4) - (y1 - y2) * post ) / d;
+    
+    // Check if the x and y coordinates are within both lines
+    if ( x < min(x1, x2) - __DBL_EPSILON__ || x > max(x1, x2) + __DBL_EPSILON__ ||
+        x < min(x3, x4) - __DBL_EPSILON__ || x > max(x3, x4) + __DBL_EPSILON__)
+        return false;
+    if ( y < min(y1, y2) - __DBL_EPSILON__ || y > max(y1, y2) + __DBL_EPSILON__ ||
+        y < min(y3, y4) - __DBL_EPSILON__ || y > max(y3, y4) + __DBL_EPSILON__ )
+        return false;
+    
+    intersection.x = x;
+    intersection.y = y;
+    
+    return true;
+}
+    
+    
 bool PointIsInsidePolygon(const Polygon &coords, const struct coord &point)
 {
     bool inside = false;
@@ -783,6 +824,47 @@ vector<Polygon> RayClipPolygon( const Polygon &inputPolygon, struct rect rect )
     vector<Polygon> closedPolygons = ClosePolygons(allPolygons, rect);
     //assert ( closedPolygons.size() > 0 );
     return closedPolygons;
+}
+    
+bool LastSelfIntersection( const Polygon &inputPolygon, const size_t startIndex, size_t &continuationIndex, struct coord &intersectionPoint )
+{
+    struct coord start = inputPolygon[startIndex];
+    struct coord end = inputPolygon[startIndex + 1];
+    
+    for ( size_t i = inputPolygon.size() - 2; i > startIndex; i-- )
+    {
+        struct coord testStart = inputPolygon[i];
+        struct coord testEnd = inputPolygon[i + 1];
+        
+        if ( LineIntersetsLine(start, end, testStart, testEnd, intersectionPoint ) )
+        {
+            continuationIndex = i + 1;
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+
+void CleanPolygon( const Polygon &inputPolygon, Polygon &outputPolygon )
+{
+    for ( size_t i = 0; i < inputPolygon.size() - 1; i++ )
+    {
+        auto first = inputPolygon[i];
+        outputPolygon.emplace_back(first);
+        
+        size_t continuationIndex = 0;
+        struct coord intersectionPoint;
+        if ( LastSelfIntersection( inputPolygon, i, continuationIndex, intersectionPoint ) )
+        {
+            assert( continuationIndex > i + 1 );
+            outputPolygon.emplace_back(intersectionPoint);
+            i = continuationIndex - 1;
+        }
+    }
+    
+    outputPolygon.emplace_back( inputPolygon.back() );
 }
 
 }
