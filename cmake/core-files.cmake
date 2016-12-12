@@ -490,4 +490,28 @@ set(MBGL_CORE_FILES
     src/mbgl/util/work_queue.cpp
     src/mbgl/util/work_queue.hpp
     src/mbgl/util/work_request.cpp
+
+    # urt
+    src/mbgl/urt/rayclipper.h
+    src/mbgl/urt/rayclipper.mm
+    src/mbgl/urt/urt_file_source.hpp
+    src/mbgl/urt/urt_file_source.mm
+    src/mbgl/urt/urt_tile_data.hpp
+    src/mbgl/urt/urt_tile_data.mm
+    src/mbgl/urt/urt_tile_layer.hpp
+    src/mbgl/urt/urt_tile_layer.mm
+    src/mbgl/urt/urt_vector_tile.hpp
+    src/mbgl/urt/urt_vector_tile.mm
+    src/mbgl/urt/urt_vector_tile_feature.hpp
+    src/mbgl/urt/urt_vector_tile_feature.mm
+    src/mbgl/urt/urt_vector_tile_place_label_feature.hpp
+    src/mbgl/urt/urt_vector_tile_place_label_feature.mm
+    src/mbgl/urt/urt_vector_tile_road_feature.hpp
+    src/mbgl/urt/urt_vector_tile_road_feature.mm
+    src/mbgl/urt/urt_vector_tile_road_label_feature.hpp
+    src/mbgl/urt/urt_vector_tile_road_label_feature.mm
+    src/mbgl/urt/urt_vector_tile_water_feature.hpp
+    src/mbgl/urt/urt_vector_tile_water_feature.mm
+    src/mbgl/urt/urt_water_tile_layer.hpp
+    src/mbgl/urt/urt_water_tile_layer.mm
 )
