@@ -421,6 +421,9 @@ public:
     NSString *fileCachePath = [paths.firstObject stringByAppendingPathComponent:@"cache.db"];
     [[NSFileManager defaultManager] removeItemAtPath:fileCachePath error:NULL];
 
+    const std::array<uint16_t, 2> size = {{ static_cast<uint16_t>(self.bounds.size.width),
+        static_cast<uint16_t>(self.bounds.size.height) }};
+    
     // setup mbgl map
     mbgl::FileSource *mbglFileSource;
     if (  mbgl::URTFileSource::usingUrtSource )
@@ -435,7 +438,7 @@ public:
 
     const float scaleFactor = [UIScreen instancesRespondToSelector:@selector(nativeScale)] ? [[UIScreen mainScreen] nativeScale] : [[UIScreen mainScreen] scale];
     _mbglThreadPool = new mbgl::ThreadPool(4);
-    _mbglMap = new mbgl::Map(*_mbglView, self.size, scaleFactor, *mbglFileSource, *_mbglThreadPool, mbgl::MapMode::Continuous, mbgl::GLContextMode::Unique, mbgl::ConstrainMode::None, mbgl::ViewportMode::Default);
+    _mbglMap = new mbgl::Map(*_mbglView, size, scaleFactor, *mbglFileSource, *_mbglThreadPool, mbgl::MapMode::Continuous, mbgl::GLContextMode::Unique, mbgl::ConstrainMode::None, mbgl::ViewportMode::Default);
     [self validateTileCacheSize];
 
     // start paused if in IB
