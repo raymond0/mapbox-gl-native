@@ -110,7 +110,7 @@ UrtVectorTileFeature::MapboxTagsPtr UrtVectorTileRoadLabelFeature::GetMapboxTags
             assert( false );
             return mapboxTags;
     }
-        
+    
     return mapboxTags;
 }
 
@@ -160,6 +160,12 @@ UrtVectorTileFeature::CoordRange UrtVectorTileRoadLabelFeature::longestSection()
     for ( size_t i = 0; i < coordinateRanges.size(); i++ )
     {
         auto range = coordinateRanges[i];
+        
+        if ( range.second < 2 )
+        {
+            continue;
+        }
+        
         double d = distanceOfSection(range);
         if ( d > longestDistance )
         {
@@ -168,6 +174,11 @@ UrtVectorTileFeature::CoordRange UrtVectorTileRoadLabelFeature::longestSection()
         }
     }
     
+    if ( coordinateRanges[longestIndex].second < 2 )
+    {
+        return CoordRange(0, 0);
+    }
+
     return coordinateRanges[longestIndex];
 }
     
@@ -219,7 +230,17 @@ bool UrtVectorTileRoadLabelFeature::shouldRender()
         }
     }
     
-    return [region containsCoordinate:itemRegion.centre];
+    if ( ! [region containsCoordinate:itemRegion.centre] )
+    {
+        return false;
+    }
+    
+    if ( distanceOfLongestSection() < DBL_EPSILON )
+    {
+        return false;
+    }
+    
+    return true;
 }
 
 }
