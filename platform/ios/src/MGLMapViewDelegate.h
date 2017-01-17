@@ -514,6 +514,8 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (void)mapView:(MGLMapView *)mapView tapOnCalloutForAnnotation:(id <MGLAnnotation>)annotation;
 
+- (void)mapView:(MGLMapView *)mapView tapGestureRecognized:(UITapGestureRecognizer *)tapGestureRecognizer;
+
 @end
 
 NS_ASSUME_NONNULL_END

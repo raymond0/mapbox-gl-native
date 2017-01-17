@@ -186,7 +186,7 @@ UrtVectorTileFeature::CoordRange UrtVectorTileRoadLabelFeature::longestSection()
 double UrtVectorTileRoadLabelFeature::distanceOfSection(UrtVectorTileFeature::CoordRange &section) const
 {
     coord *coords;
-    uint32_t nrCoords = (uint32_t) [mapItem lengthOfCoordinatesWithData:&coords];
+    uint32_t nrCoords __unused = (uint32_t) [mapItem lengthOfCoordinatesWithData:&coords];
 
     assert ( nrCoords >= section.first + section.second );
     assert( section.second > 1 );

@@ -1507,7 +1507,17 @@ public:
     }
     else
     {
-        [self deselectAnnotation:self.selectedAnnotation animated:YES];
+        if ( self.selectedAnnotation == nil )
+        {
+            if ([self.delegate respondsToSelector:@selector(mapView:tapGestureRecognized:)])
+            {
+                [self.delegate mapView:self tapGestureRecognized:singleTap];
+            }
+        }
+        else
+        {
+            [self deselectAnnotation:self.selectedAnnotation animated:YES];
+        }
     }
 }
 
