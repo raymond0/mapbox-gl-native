@@ -63,23 +63,23 @@ bool PointIsInsideRect(const struct coord &coord, const struct rect &r)
 void LineRectIntersection( const struct coord &p1, const struct coord &p2, const struct rect &r,
                            const EdgeType edge, struct coord &result)
 {
-    float dx=p2.x-p1.x;
-    float dy=p2.y-p1.y;
+    double dx=p2.x-p1.x;
+    double dy=p2.y-p1.y;
     switch(edge) {
         case EdgeLeft:
-            result.y=p1.y + ((float)(r.l.x-p1.x)) * dy/dx;
+            result.y=p1.y + ((double)(r.l.x-p1.x)) * dy/dx;
             result.x=r.l.x;
             break;
         case EdgeRight:
-            result.y=p1.y + ((float)(r.h.x-p1.x)) * dy/dx;
+            result.y=p1.y + ((double)(r.h.x-p1.x)) * dy/dx;
             result.x=r.h.x;
             break;
         case EdgeTop:
-            result.x=p1.x + ((float)(r.h.y-p1.y)) * dx/dy;
+            result.x=p1.x + ((double)(r.h.y-p1.y)) * dx/dy;
             result.y=r.h.y;
             break;
         case EdgeBottom:
-            result.x=p1.x + ((float)(r.l.y-p1.y)) * dx/dy;
+            result.x=p1.x + ((double)(r.l.y-p1.y)) * dx/dy;
             result.y=r.l.y;
             break;
     }
