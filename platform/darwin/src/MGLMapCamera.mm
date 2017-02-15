@@ -1,6 +1,9 @@
 #import "MGLMapCamera.h"
 
 #include <mbgl/util/projection.hpp>
+#include <mbgl/util/constants.cpp>
+
+#include <mbgl/map/map.hpp>
 
 @implementation MGLMapCamera
 
@@ -12,6 +15,37 @@
 + (instancetype)camera
 {
     return [[self alloc] init];
+}
+
++ (instancetype)cameraWithAnchorCoordinate:(CLLocationCoordinate2D)anchorCoordinate
+                               eyeAltitude:(CLLocationDistance)eyeAltitude
+                               cameraPitch:(CGFloat)cameraPitch
+                         viewpointRotation:(CGFloat)viewpointRotation
+                                   heading:(CLLocationDirection)heading
+{
+    double mercatorScale = 1.0 / std::cos(anchorCoordinate.latitude * mbgl::util::DEG2RAD);
+    
+    double groundDistance = eyeAltitude * std::tan( cameraPitch * mbgl::util::DEG2RAD );
+    double cameraShift = eyeAltitude * std::tan( viewpointRotation * mbgl::util::DEG2RAD );
+    groundDistance -= cameraShift;
+    groundDistance *= mercatorScale;
+    
+    mbgl::LatLng eyeLatLng = mbgl::LatLng(anchorCoordinate.latitude, anchorCoordinate.longitude);
+    mbgl::ProjectedMeters centerMeters = mbgl::Projection::projectedMetersForLatLng(eyeLatLng);
+    double radiansHeading = (heading * M_PI) / 180.0;
+    centerMeters.northing += std::cos(radiansHeading) * groundDistance;
+    centerMeters.easting += std::sin(radiansHeading) * groundDistance;
+    
+    mbgl::LatLng centerLatLng = mbgl::Projection::latLngForProjectedMeters(centerMeters);
+    
+    CLLocationCoordinate2D centerCoordinate;
+    centerCoordinate.latitude = centerLatLng.latitude;
+    centerCoordinate.longitude = centerLatLng.longitude;
+    
+    return [[self alloc] initWithCenterCoordinate:centerCoordinate
+                                         altitude:eyeAltitude
+                                            pitch:cameraPitch
+                                          heading:heading];
 }
 
 + (instancetype)cameraLookingAtCenterCoordinate:(CLLocationCoordinate2D)centerCoordinate
