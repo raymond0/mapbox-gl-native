@@ -57,6 +57,7 @@ LayerType LayerForItemType( unsigned int itemType )
     {
         case type_poly_land:
         case type_poly_water:
+        case type_poly_water_land_hole:
             return LayerPolyWater;
         case type_poly_wood:
         case type_poly_park:
@@ -278,6 +279,8 @@ void UrtVectorTileData::parse() const
     {
         if ( mapTile.isPlanetOceanMapTile && mapTiles.count > 1 && tileLevel >= 8 )     // ToDo - remove
             continue;
+        
+        //printf( "Using water from tile %s, is planet: %d\n", tilename.UTF8String, mapTile.isPlanetOceanMapTile );
         
         bool blankNode = false;
         MapTile *tile = mapTile;

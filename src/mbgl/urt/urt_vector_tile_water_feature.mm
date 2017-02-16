@@ -78,19 +78,22 @@ bool PolygonMatchesExtent( const GeometryCoordinates &polygon )
     return true;
 }
 
+//#define DUMP_POLYGON_INFO
+#ifdef DUMP_POLYGON_INFO
 
-/*long long GeomArea(GeometryCoordinates c)
- {
- long long area=0;
- size_t i,j=0;
- for ( i=0 ; i < c.size(); i++ )
- {
- if (++j == c.size())
- j=0;
- area+=(long long)(c[i].x+c[j].x)*(c[i].y-c[j].y);
- }
- return area/2;
- }*/
+long long GeomArea(GeometryCoordinates c)
+{
+    long long area=0;
+    size_t i,j=0;
+    for ( i=0 ; i < c.size(); i++ )
+    {
+        if (++j == c.size())
+            j=0;
+        area+=(long long)(c[i].x+c[j].x)*(c[i].y-c[j].y);
+    }
+    return area/2;
+}
+#endif
 
 
 GeometryCollection UrtVectorTileWaterFeature::getGeometries() const
@@ -103,12 +106,18 @@ GeometryCollection UrtVectorTileWaterFeature::getGeometries() const
     //  Docs do state we need to avoid tanget edges.
     //
     GeometryCoordinates line;
-    line.emplace_back( GeometryCoordinate(0 - 1,0 - 1) );
-    line.emplace_back( GeometryCoordinate(0 - 1,util::EXTENT + 1) );
-    line.emplace_back( GeometryCoordinate(util::EXTENT + 1, util::EXTENT + 1) );
-    line.emplace_back( GeometryCoordinate(util::EXTENT + 1, 0 - 1) );
+    line.emplace_back( GeometryCoordinate(0 ,0) );
+    line.emplace_back( GeometryCoordinate(0,util::EXTENT) );
+    line.emplace_back( GeometryCoordinate(util::EXTENT, util::EXTENT) );
+    line.emplace_back( GeometryCoordinate(util::EXTENT, 0) );
     
     lines.emplace_back( line );
+    
+    //
+    // NB - We no longer handle water/land areas like this. Maybe we should still use this method if land
+    // is completely contained within the tile though?
+    //
+    assert( landAreas.size() == 0 );
     if ( landAreas.size() == 0 )
         return lines;
     

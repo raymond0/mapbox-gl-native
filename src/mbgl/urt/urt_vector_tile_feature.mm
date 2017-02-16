@@ -24,6 +24,7 @@ UrtVectorTileFeature::MapboxTagsPtr UrtVectorTileFeature::GetMapboxTags() const
             case type_poly_park:
                 return pair<string, string>("park", "garden");
             case type_poly_water:
+            case type_poly_water_land_hole:
                 return pair<string, string>("", "");
             default:
                 assert( false );
@@ -253,23 +254,123 @@ GeometryCollection UrtVectorTileFeature::ClippedPolygonInLocalCoords( MapItem *i
     
     return lines;
 }
+    
+    
+bool UrtVectorTileFeature::PointInPolygon( const GeometryCoordinates &polygon, const GeometryCoordinate &coordinate ) const
+{
+    bool ret = false;
+    const GeometryCoordinate *cp = &polygon[0];
+    const GeometryCoordinate *last = &polygon[polygon.size() - 1];
+    while (cp < last)
+    {
+        if ((cp[0].y > coordinate.y) != (cp[1].y > coordinate.y) &&
+            coordinate.x < ( (long long) cp[1].x - cp[0].x ) * ( coordinate.y -cp[0].y ) / ( cp[1].y - cp[0].y ) + cp[0].x )
+        {
+            ret = ! ret;
+        }
+        cp++;
+    }
+    
+    size_t lastIndex = polygon.size() - 1;
+    if ( polygon[0].x != polygon[lastIndex].x || polygon[0].y != polygon[lastIndex].y )
+    {
+        if ((polygon[lastIndex].y > coordinate.y) != (polygon[0].y > coordinate.y) &&
+            coordinate.x < ( (long long) polygon[0].x - polygon[lastIndex].x ) * ( coordinate.y - polygon[lastIndex].y ) / ( polygon[0].y - polygon[lastIndex].y ) + polygon[lastIndex].x )
+        {
+            ret = ! ret;
+        }
+    }
+    
+    return ret;
+}
+    
+    
+void UrtVectorTileFeature::AssignHolesToOuterPolygons( const GeometryCollection &outerPolygons, const GeometryCollection &holes,
+                                                       GeometryCollection &completed ) const
+{
+    vector<vector<int> > polygonHoles(outerPolygons.size());
+    
+    for ( int holeIdx = 0; holeIdx < (int) holes.size(); holeIdx++ )
+    {
+        for ( size_t polygonIdx = 0; polygonIdx < outerPolygons.size(); polygonIdx++ )
+        {
+            if ( PointInPolygon( outerPolygons[polygonIdx], holes[holeIdx][0] ) )
+            {
+                polygonHoles[polygonIdx].emplace_back(holeIdx);
+                break;
+            }
+        }
+    }
+    
+    for ( size_t polygonIdx = 0; polygonIdx < outerPolygons.size(); polygonIdx++ )
+    {
+        completed.emplace_back(outerPolygons[polygonIdx]);
+        
+        for ( int holeIdx : polygonHoles[polygonIdx] )
+        {
+            completed.emplace_back( holes[holeIdx] );
+        }
+    }
+}
 
 
 GeometryCollection UrtVectorTileFeature::getGeometries() const
 {
     //
-    //  Should handle everything expect roads
+    //  Should handle everything except roads
     //
     
+    //
+    //  Complex case - tile have been combined. We need to clip the item to the tile.
+    //  If the item is a polygon, we could end up with multiple polygons. If there are holes,
+    //  we need to clip those too. We also need to assign each hole to a polygon such that all
+    //  polygons are followed by their reversed holes.
+    //
     if ( mapItem.itemType >= type_area && fromProxyTile )
     {
-        return ClippedPolygonInLocalCoords(mapItem);
+        GeometryCollection outerPolygons = ClippedPolygonInLocalCoords(mapItem);
+        
+        GeometryCollection holes;
+        for ( MapItem *hole in mapItem.polygonHoles )
+        {
+            GeometryCollection holeLines = ClippedPolygonInLocalCoords(hole);
+            for ( auto &holeLine : holeLines )
+            {
+                std::reverse(holeLine.begin(), holeLine.end());
+                holes.emplace_back( holeLine );
+            }
+        }
+        
+        if ( outerPolygons.size() > 1 && holes.size() > 0 )
+        {
+            GeometryCollection lines;
+            AssignHolesToOuterPolygons( outerPolygons, holes, lines );
+            return lines;
+        }
+        else
+        {
+            outerPolygons.insert( outerPolygons.end(), holes.begin(), holes.end() );
+            return outerPolygons;
+        }
     }
     
+    //
+    //  Simple case - 1 item, 0 or more holes (in case of a polygon). All holes belong to main item.
+    //
     GeometryCollection lines;
     NSInteger nrCoords = [mapItem lengthOfCoordinatesWithData:nil];
     auto allUnclippedCoords = GetMapboxCoordinatesInRange( mapItem, CoordRange( 0, nrCoords ) );
+    
     lines.emplace_back( allUnclippedCoords );
+    
+    for ( MapItem *hole in mapItem.polygonHoles )
+    {
+        NSInteger nrCoordsHole = [hole lengthOfCoordinatesWithData:nil];
+        auto allUnclippedCoordsHole = GetMapboxCoordinatesInRange( hole, CoordRange( 0, nrCoordsHole ) );
+        std::reverse(allUnclippedCoordsHole.begin(), allUnclippedCoordsHole.end());
+        lines.emplace_back( allUnclippedCoordsHole );
+    }
+    
     return lines;
 }
     

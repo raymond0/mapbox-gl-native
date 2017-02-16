@@ -17,6 +17,13 @@ void WaterTileLayer::addMapItem( MapItem *mapItem, bool fromProxyTile )
     {
         waterFeatures.emplace_back( mapItem, fromProxyTile );
     }
+    else if ( mapItem.itemType == type_poly_water_land_hole )
+    {
+        assert( waterFeatures.size() > 0 && "Can have a land hole without first having some water" );
+        assert( waterFeatures.back().first.itemType == type_poly_water && "trying to add a water hole to something thats not water" );
+        assert( waterFeatures.back().second == fromProxyTile && "Both water item and its hole should have proxy status matching" );
+        [waterFeatures.back().first addPolygonHole:mapItem];
+    }
     else if ( mapItem.itemType == type_poly_land )
     {
         landFeatures.emplace_back( mapItem, fromProxyTile );
@@ -45,7 +52,7 @@ void WaterTileLayer::finalizeInternalItems()
     }
     
     //
-    //  Whole area is water
+    //  Whole area is water. Create a special feature that handles this and treats land as holes.
     //
     auto feature = make_unique<UrtVectorTileWaterFeature>(region);
     
