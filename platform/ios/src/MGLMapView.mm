@@ -1529,6 +1529,12 @@ public:
 
     if (doubleTap.state == UIGestureRecognizerStateEnded)
     {
+        if ([self.delegate respondsToSelector:@selector(mapView:doubleTapGestureRecognized:)])
+        {
+            [self.delegate mapView:self doubleTapGestureRecognized:doubleTap];
+            return;
+        }
+
         [self trackGestureEvent:MGLEventGestureDoubleTap forRecognizer:doubleTap];
         CGPoint gesturePoint = [self anchorPointForGesture:doubleTap];
 
@@ -2009,6 +2015,13 @@ public:
                                                           pitch:pitch
                                                         heading:heading];
 }
+
+
+-(CLLocationDistance)altitudeAtZoomLevel:(double)zoomLevel atPitch:(CGFloat)pitch atLatitude:(CLLocationDegrees)latitude
+{
+    return MGLAltitudeForZoomLevel(zoomLevel, pitch, latitude, self.frame.size);
+}
+
 
 - (void)emptyMemoryCache
 {
@@ -2764,6 +2777,11 @@ public:
     }
 
     return bounds;
+}
+
+- (CLLocationDistance)metersPerPointAtLatitude:(CLLocationDegrees)latitude atZoomLevel:(double)zoomLevel
+{
+    return _mbglMap->getMetersPerPixelAtLatitude(latitude, zoomLevel);
 }
 
 - (CLLocationDistance)metersPerPointAtLatitude:(CLLocationDegrees)latitude

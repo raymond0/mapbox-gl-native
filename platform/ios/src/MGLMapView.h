@@ -549,6 +549,9 @@ IB_DESIGNABLE
  */
 - (IBAction)resetPosition;
 
+
+-(CLLocationDistance)altitudeAtZoomLevel:(double)zoomLevel atPitch:(CGFloat)pitch atLatitude:(CLLocationDegrees)latitude;
+
 /**
  The coordinate bounds visible in the receiver’s viewport.
  
@@ -880,6 +883,8 @@ IB_DESIGNABLE
  @return The distance in meters spanned by a single point.
  */
 - (CLLocationDistance)metersPerPointAtLatitude:(CLLocationDegrees)latitude;
+
+- (CLLocationDistance)metersPerPointAtLatitude:(CLLocationDegrees)latitude atZoomLevel:(double)zoomLevel;
 
 - (CLLocationDistance)metersPerPixelAtLatitude:(CLLocationDegrees)latitude __attribute__((deprecated("Use -metersPerPointAtLatitude:.")));
 
