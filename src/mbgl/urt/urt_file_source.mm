@@ -193,6 +193,8 @@ std::unique_ptr<AsyncRequest> URTFileSource::Impl::OtherRequest(const Resource& 
     
     if ( data == nil )
     {
+        // URL base: https://api.mapbox.com/fonts/v1/mapbox/DIN%20Offc%20Pro%20Regular%2cArial%20Unicode%20MS%20Regular/8192-8447.pbf?access_token=pk.eyJ1IjoicmF5aHVudGVydWsiLCJhIjoiY2lmMnF5bzZ5MDBqaHN2bHlheXV0djZ2OCJ9.aJKNtMIdNxgbz_2PDjr_fg&events=true
+        NSLog( @"Missing request data!!! URL was %@", urlStr );
         response.error = std::make_unique<Response::Error>(Response::Error::Reason::Other, "Could not load resource" );
         callback(response);
         return nullptr;
