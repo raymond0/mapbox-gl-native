@@ -13,7 +13,7 @@ namespace mbgl {
     
 void WaterTileLayer::addMapItem( MapItem *mapItem, bool fromProxyTile )
 {
-    if ( mapItem.itemType == type_poly_water )
+    if ( mapItem.itemType == type_poly_water || mapItem.itemType == type_poly_ocean )
     {
         waterFeatures.emplace_back( mapItem, fromProxyTile );
     }

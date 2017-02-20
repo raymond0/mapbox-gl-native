@@ -55,6 +55,7 @@ LayerType LayerForItemType( unsigned int itemType )
 {
     switch (itemType)
     {
+        case type_poly_ocean:   // Caspian Sea only these days.
         case type_poly_land:
         case type_poly_water:
         case type_poly_water_land_hole:
