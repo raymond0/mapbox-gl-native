@@ -16,6 +16,8 @@
 #include "rayclipper.h"
 #include "urt_water_tile_layer.hpp"
 
+#define GLOBAL_OCEAN_END_LEVEL 7    // Needs to match maptool
+
 namespace mbgl
 {
     
@@ -117,7 +119,7 @@ private:
     typedef std::vector<std::shared_ptr<UrtTileLayer> > LayersType;
     std::shared_ptr< LayersType > layers;
     void parse() const;
-    void addMapTile( MapTile *mapTile, bool wasProxyTile, NSInteger tileLevel ) const;
+    void addMapTile( MapTile *mapTile, bool wasProxyTile, bool shouldRenderOceans, NSInteger tileLevel ) const;
     bool shouldIncludeItemType( unsigned int itemType, NSInteger tileLevel ) const;
     item_type wholeTileGroundType;
 };
@@ -219,7 +221,7 @@ bool UrtVectorTileData::shouldIncludeItemType( unsigned int itemType, NSInteger 
 }
 
     
-void UrtVectorTileData::addMapTile( MapTile *mapTile, bool fromProxyTile, NSInteger tileLevel ) const
+void UrtVectorTileData::addMapTile( MapTile *mapTile, bool fromProxyTile, bool shouldRenderOceans, NSInteger tileLevel ) const
 {
     NSEnumerator *mapItemEnumerator = [mapTile mapItemEnumerator];
     MapItem *mapItem;
@@ -243,6 +245,14 @@ void UrtVectorTileData::addMapTile( MapTile *mapTile, bool fromProxyTile, NSInte
         if ( ! shouldIncludeItemType( mapItem.itemType, tileLevel ) )
         {
             continue;
+        }
+        
+        if ( mapItem.itemType == type_poly_ocean || mapItem.itemType == type_poly_water_land_hole )
+        {
+            if ( ! shouldRenderOceans )
+            {
+                continue;
+            }
         }
         
         LayerType layer = LayerForItemType( itemType );
@@ -276,12 +286,35 @@ void UrtVectorTileData::parse() const
     NSString *tilename = ( __bridge NSString * ) data->tilenameNSString();
     NSInteger tileLevel = tilename.length;
     
+    NSInteger closestNonBlank = NSIntegerMax;
+    
     for ( MapTile *mapTile in mapTiles )
     {
-        if ( mapTile.isPlanetOceanMapTile && mapTiles.count > 1 && tileLevel >= 8 )     // ToDo - remove
-            continue;
+        NSInteger distanceToNonBlank = mapTile.distanceToNonBlankNode;
+        if ( distanceToNonBlank < closestNonBlank )
+        {
+            closestNonBlank = distanceToNonBlank;
+        }
+    }
+    
+    bool haveRenderedOceans = false;
+    
+    for ( MapTile *mapTile in mapTiles )
+    {
+        bool shouldRenderOceans = false;
+        NSInteger distanceToNonBlank = 0;
+        if ( mapTile.isPlanetOceanMapTile && tileLevel <= GLOBAL_OCEAN_END_LEVEL )
+        {
+            shouldRenderOceans = true;
+        }
+        else
+        {
+            distanceToNonBlank = mapTile.distanceToNonBlankNode;
+            shouldRenderOceans = !haveRenderedOceans && distanceToNonBlank == closestNonBlank;
+        }
         
-        //printf( "Using water from tile %s, is planet: %d\n", tilename.UTF8String, mapTile.isPlanetOceanMapTile );
+        //printf( "Using water from tile %s, is planet: %d, isBlank: %d, distance: %ld\n",
+        //        tilename.UTF8String, mapTile.isPlanetOceanMapTile, mapTile.blankNode, (long)distanceToNonBlank );
         
         bool blankNode = false;
         MapTile *tile = mapTile;
@@ -292,7 +325,12 @@ void UrtVectorTileData::parse() const
             tile = tile.parent;
         }
         
-        addMapTile( tile, blankNode, tileLevel );
+        addMapTile( tile, blankNode, shouldRenderOceans, tileLevel );
+        
+        if ( shouldRenderOceans )
+        {
+            haveRenderedOceans = true;
+        }
     }
     
     layers->at(LayerPolyWater)->finalizeInternalItems();

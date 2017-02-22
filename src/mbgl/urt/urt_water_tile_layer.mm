@@ -20,7 +20,7 @@ void WaterTileLayer::addMapItem( MapItem *mapItem, bool fromProxyTile )
     else if ( mapItem.itemType == type_poly_water_land_hole )
     {
         assert( waterFeatures.size() > 0 && "Can have a land hole without first having some water" );
-        assert( waterFeatures.back().first.itemType == type_poly_water && "trying to add a water hole to something thats not water" );
+        assert( waterFeatures.back().first.itemType == type_poly_ocean || waterFeatures.back().first.itemType == type_poly_water && "trying to add a water hole to something thats not ocean" );
         assert( waterFeatures.back().second == fromProxyTile && "Both water item and its hole should have proxy status matching" );
         [waterFeatures.back().first addPolygonHole:mapItem];
     }

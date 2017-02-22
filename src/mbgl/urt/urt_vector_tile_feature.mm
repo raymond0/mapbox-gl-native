@@ -23,6 +23,7 @@ UrtVectorTileFeature::MapboxTagsPtr UrtVectorTileFeature::GetMapboxTags() const
             case type_poly_wood:
             case type_poly_park:
                 return pair<string, string>("park", "garden");
+            case type_poly_ocean:
             case type_poly_water:
             case type_poly_water_land_hole:
                 return pair<string, string>("", "");
