@@ -49,6 +49,9 @@ typedef enum
     LayerRoad,
     LayerRoadLabel,
     LayerPlaceLabel,
+#ifdef DENSITY_DEBUGGING
+    LayerDensityDebug,
+#endif
     LayerCount
 } LayerType;
 
@@ -65,6 +68,10 @@ LayerType LayerForItemType( unsigned int itemType )
         case type_poly_wood:
         case type_poly_park:
             return LayerPolyWood;
+#ifdef DENSITY_DEBUGGING
+        case type_poly_debug_city_boundary:
+            return LayerDensityDebug;
+#endif
         default:
             if ( ItemTypeIsPlaceLabel ( itemType ) )
             {
@@ -138,7 +145,9 @@ UrtVectorTileData::UrtVectorTileData(std::shared_ptr<UrtTileData> data_)
     layers->emplace_back(shared_ptr<UrtTileLayer> (new UrtRoadTileLayer("road", region)));
     layers->emplace_back(shared_ptr<UrtTileLayer> (new UrtRoadLabelTileLayer("road_label", region)));
     layers->emplace_back(shared_ptr<UrtTileLayer> (new UrtPlaceTileLayer("place_label", region)));
-    
+#ifdef DENSITY_DEBUGGING
+    layers->emplace_back(shared_ptr<UrtTileLayer> (new UrtTileLayer("debug_density", region)));
+#endif
     assert( layers->size() == LayerCount );
 }
 
@@ -157,6 +166,8 @@ const GeometryTileLayer* UrtVectorTileData::getLayer(const std::string& name) co
         
         //printf( "Finished parsing tile %s\n", tilename.UTF8String );
     }
+    
+    //cout << "Layer requested: " << name << "\n";
     
     for ( auto &layer : *layers )
     {
@@ -261,6 +272,26 @@ void UrtVectorTileData::addMapTile( MapTile *mapTile, bool fromProxyTile, bool s
         {
             continue;
         }
+        
+#ifdef DENSITY_DEBUGGING
+        if ( layer == LayerDensityDebug )
+        {
+            MapItemAttribute *attr = [mapItem attributeOfType:attr_debug_density];
+            
+            if ( attr == nil )
+            {
+                continue;
+            }
+            
+            double density = [attr doubleForAttribute];
+            bool isCity = density >= MRContextDebugDensity;
+            
+            if ( !isCity )
+            {
+                continue;
+            }
+        }
+#endif
         
         layers->at(layer)->addMapItem( mapItem, fromProxyTile );
         

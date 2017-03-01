@@ -26,6 +26,9 @@ UrtVectorTileFeature::MapboxTagsPtr UrtVectorTileFeature::GetMapboxTags() const
             case type_poly_ocean:
             case type_poly_water:
             case type_poly_water_land_hole:
+#ifdef DENSITY_DEBUGGING
+            case type_poly_debug_city_boundary:
+#endif
                 return pair<string, string>("", "");
             default:
                 assert( false );
