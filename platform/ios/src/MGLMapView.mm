@@ -4734,6 +4734,25 @@ public:
     NSMutableArray *offscreenAnnotations = [self.annotations mutableCopy];
     [offscreenAnnotations removeObjectsInArray:visibleAnnotations];
     
+    for ( NSUInteger i = 0; i < offscreenAnnotations.count; i++ )
+    {
+        id<MGLAnnotation> annotation = offscreenAnnotations[i];
+        
+        if ( [annotation respondsToSelector:@selector(isUserAnnotationHack) ] )
+        {
+            if ( [annotation performSelector:@selector(isUserAnnotationHack)] )
+            {
+                NSLog( @"Activiating user position node hack" );
+                        
+                NSMutableArray *newVisible = [NSMutableArray arrayWithArray:visibleAnnotations];
+                [newVisible addObject:annotation];
+                visibleAnnotations = newVisible;
+                [offscreenAnnotations removeObjectAtIndex:i];
+            }
+            break;
+        }
+    }
+    
     // Update the center of visible annotation views
     for (id<MGLAnnotation> annotation in visibleAnnotations)
     {
