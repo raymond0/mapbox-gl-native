@@ -334,9 +334,10 @@ void UrtVectorTileData::parse() const
     {
         bool shouldRenderOceans = false;
         NSInteger distanceToNonBlank = 0;
-        if ( mapTile.isPlanetOceanMapTile && tileLevel <= GLOBAL_OCEAN_END_LEVEL )
+        
+        if ( tileLevel <= GLOBAL_OCEAN_END_LEVEL )
         {
-            shouldRenderOceans = true;
+            shouldRenderOceans = mapTile.isPlanetOceanMapTile;
         }
         else
         {

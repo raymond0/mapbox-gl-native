@@ -451,7 +451,7 @@ void EmbedEdgeHolesIntoParent( GeometryCoordinates &parent, GeometryCollection &
         if ( insertionIndex < endInsertionIndex )
         {
             // We cut 1+ corners
-            int nrCutCorners = endInsertionIndex - insertionIndex;
+            __unused int nrCutCorners = endInsertionIndex - insertionIndex;
             assert( nrCutCorners < 4 );
             
             parent.erase( parent.begin() + insertionIndex + 1, parent.begin() + endInsertionIndex );
