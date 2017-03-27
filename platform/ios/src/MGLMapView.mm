@@ -30,6 +30,7 @@
 #include <mbgl/util/run_loop.hpp>
 
 #import <mbgl/urt/urt_file_source.hpp>
+#import <mbgl/urt/urt_auto_file_source.hpp>
 
 #import "Mapbox.h"
 #import "MGLFeature_Private.h"
@@ -310,17 +311,18 @@ public:
     MGLCompassDirectionFormatter *_accessibilityCompassFormatter;
     
     std::shared_ptr<mbgl::URTFileSource> _urtFileSource;
+    std::shared_ptr<mbgl::URTAutoFileSource> _urtAutoFileSource;
+    MGLMapViewDataSource _dataSource;
 }
 
 #pragma mark - Setup & Teardown -
 
 
-- (instancetype)initWithFrame:(CGRect)frame usingUrtFileSource:(bool)urtFileSource
+- (instancetype)initWithFrame:(CGRect)frame usingSource:(MGLMapViewDataSource)source;
 {
-    mbgl::URTFileSource::usingUrtSource = urtFileSource;
-
     if (self = [super initWithFrame:frame])
     {
+        _dataSource = source;
         [self commonInit];
         self.styleURL = nil;
     }
@@ -424,16 +426,22 @@ public:
     const std::array<uint16_t, 2> size = {{ static_cast<uint16_t>(self.bounds.size.width),
         static_cast<uint16_t>(self.bounds.size.height) }};
     
-    // setup mbgl map
     mbgl::FileSource *mbglFileSource;
-    if (  mbgl::URTFileSource::usingUrtSource )
+
+    // setup mbgl map
+switch (_dataSource)
     {
-        _urtFileSource = std::shared_ptr<mbgl::URTFileSource>(new mbgl::URTFileSource);
-        mbglFileSource = _urtFileSource.get();
-    }
-    else
-    {
-        mbglFileSource = [MGLOfflineStorage sharedOfflineStorage].mbglFileSource;
+        case MGLMapViewDataSourceAutomatic:
+            _urtAutoFileSource = std::shared_ptr<mbgl::URTAutoFileSource>(new mbgl::URTAutoFileSource);
+            mbglFileSource = _urtAutoFileSource.get();
+            break;
+        case MGLMapViewDataSourceOnline:
+            mbglFileSource = [MGLOfflineStorage sharedOfflineStorage].mbglFileSource;
+            break;
+        case MGLMapViewDataSourceOffline:
+            _urtFileSource = std::shared_ptr<mbgl::URTFileSource>(new mbgl::URTFileSource);
+            mbglFileSource = _urtFileSource.get();
+            break;
     }
 
     const float scaleFactor = [UIScreen instancesRespondToSelector:@selector(nativeScale)] ? [[UIScreen mainScreen] nativeScale] : [[UIScreen mainScreen] scale];

@@ -81,7 +81,13 @@ IB_DESIGNABLE
 
 #pragma mark Creating Instances
 
-- (instancetype)initWithFrame:(CGRect)frame usingUrtFileSource:(bool)urtFileSource;
+typedef NS_ENUM(NSUInteger, MGLMapViewDataSource) {
+    MGLMapViewDataSourceAutomatic = 0,
+    MGLMapViewDataSourceOnline = 1,
+    MGLMapViewDataSourceOffline = 2
+};
+
+- (instancetype)initWithFrame:(CGRect)frame usingSource:(MGLMapViewDataSource)source;
 
 /**
  Initializes and returns a newly allocated map view with the specified frame

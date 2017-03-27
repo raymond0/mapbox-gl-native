@@ -2,6 +2,8 @@
 #include <mbgl/tile/vector_tile.hpp>
 #include <mbgl/urt/urt_vector_tile.hpp>
 #include <mbgl/urt/urt_file_source.hpp>
+#include <mbgl/style/update_parameters.hpp>
+#include <mbgl/storage/default_file_source.hpp>
 
 namespace mbgl {
 namespace style {
@@ -12,7 +14,8 @@ VectorSource::Impl::Impl(std::string id_, Source& base_, variant<std::string, Ti
 
 std::unique_ptr<Tile> VectorSource::Impl::createTile(const OverscaledTileID& tileID,
                                                      const UpdateParameters& parameters) {
-    if ( URTFileSource::usingUrtSource )
+    
+    if ( parameters.fileSource.isUsingUrtSource( tileID.overscaledZ ) )
     {
         return std::make_unique<UrtVectorTile>(tileID, base.getID(), parameters, tileset);
     }

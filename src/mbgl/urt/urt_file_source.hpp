@@ -19,7 +19,7 @@ namespace mbgl {
         
         std::unique_ptr<AsyncRequest> request(const Resource&, Callback) override;
         
-        static bool usingUrtSource;
+        virtual bool isUsingUrtSource( uint8_t ) override { return true; }
 
     private:
         class Impl;

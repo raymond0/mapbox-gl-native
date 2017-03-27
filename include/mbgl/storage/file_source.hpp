@@ -31,6 +31,8 @@ public:
     virtual bool supportsOptionalRequests() const {
         return false;
     }
+    
+    virtual bool isUsingUrtSource( uint8_t ) { return false; }
 };
 
 } // namespace mbgl
