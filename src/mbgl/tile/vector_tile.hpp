@@ -11,15 +11,15 @@ namespace style {
 class UpdateParameters;
 } // namespace style
 
-class VectorTile : public GeometryTile {
+class VectorTile : virtual public GeometryTile {
 public:
     VectorTile(const OverscaledTileID&,
                std::string sourceID,
                const style::UpdateParameters&,
                const Tileset&);
 
-    void setNecessity(Necessity) final;
-    void setData(std::shared_ptr<const std::string> data,
+    virtual void setNecessity(Necessity);
+    virtual void setData(std::shared_ptr<const std::string> data,
                  optional<Timestamp> modified,
                  optional<Timestamp> expires,
                  std::shared_ptr<UrtTileData> urtFile);

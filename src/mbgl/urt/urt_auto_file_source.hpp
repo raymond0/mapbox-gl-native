@@ -23,8 +23,6 @@ namespace mbgl {
         
         std::unique_ptr<AsyncRequest> request(const Resource&, Callback) override;
         
-        virtual bool isUsingUrtSource( uint8_t overscaledZ ) override;
-        
     private:
         DefaultFileSource *m_default_file_source;
         URTFileSource *m_urt_file_source;

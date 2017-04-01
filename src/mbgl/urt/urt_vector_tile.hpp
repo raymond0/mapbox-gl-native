@@ -16,9 +16,7 @@
 
 namespace mbgl {
 
-class UrtTileLayer;
-
-class UrtVectorTile : public GeometryTile
+class UrtVectorTile : virtual public GeometryTile
 {
 public:
     UrtVectorTile(const OverscaledTileID& id_,
@@ -26,14 +24,51 @@ public:
                   const style::UpdateParameters& parameters,
                   const Tileset& tileset);
 
-    void setNecessity(Necessity) final;
-    void setData(std::shared_ptr<const std::string> data,
+    virtual void setNecessity(Necessity);
+    virtual void setData(std::shared_ptr<const std::string> data,
                  optional<Timestamp> modified,
                  optional<Timestamp> expires,
                  std::shared_ptr<UrtTileData> urtFile);
     
 private:
     TileLoader<UrtVectorTile> loader;
+};
+    
+    
+class AutoVectorTile : virtual public VectorTile, virtual public UrtVectorTile
+{
+public:
+    AutoVectorTile(const OverscaledTileID& id_,
+                   std::string sourceID_,
+                   const style::UpdateParameters& parameters,
+                   const Tileset& tileset) :
+    GeometryTile(id_, sourceID_, parameters),
+    VectorTile( id_, sourceID_, parameters, tileset),
+    UrtVectorTile( id_, sourceID_, parameters, tileset )
+    {
+        
+    }
+    
+    void setNecessity(Necessity necessity) final
+    {
+        VectorTile::setNecessity(necessity);
+        UrtVectorTile::setNecessity(necessity);
+    }
+    void setData(std::shared_ptr<const std::string> data,
+                 optional<Timestamp> modified,
+                 optional<Timestamp> expires,
+                 std::shared_ptr<UrtTileData> urtFile)
+    {
+        if ( urtFile != nullptr )
+        {
+            UrtVectorTile::setData(data, modified, expires, urtFile);
+        }
+        else
+        {
+            VectorTile::setData(data, modified, expires, urtFile);
+        }
+    }
+    
 };
 
 }

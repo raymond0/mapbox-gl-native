@@ -80,17 +80,26 @@ URTAutoFileSource::~URTAutoFileSource()
     delete m_urt_file_source;
     m_urt_file_source = nullptr;
 }
-
     
-bool URTAutoFileSource::isUsingUrtSource( uint8_t overscaledZ )
-{
-    if ( MRInDrivingMode && overscaledZ == 15 )
+    
+class URTAutoRequest : public AsyncRequest {
+public:
+    URTAutoRequest()
     {
-        return true;
+        onlineRequest = nullptr;
+        offlineRequest = std::make_shared<std::unique_ptr<AsyncRequest>>(nullptr);
     }
     
-    return !m_online;
-}
+    ~URTAutoRequest() override
+    {
+        
+    }
+    
+    std::unique_ptr<AsyncRequest> onlineRequest;
+    std::shared_ptr<std::unique_ptr<AsyncRequest>> offlineRequest;
+    
+private:
+};
 
     
 std::unique_ptr<AsyncRequest> URTAutoFileSource::request(const Resource& resource, Callback callback)
@@ -100,14 +109,37 @@ std::unique_ptr<AsyncRequest> URTAutoFileSource::request(const Resource& resourc
         return m_urt_file_source->request(resource, callback);
     }
     
-    if ( m_online )
+    if ( ! m_online )
     {
-        return m_default_file_source->request(resource, callback);
-    }
-    else
-    {
+        //
+        //  Stop mix of online cache and pure offline as they don't look the same
+        //
         return m_urt_file_source->request(resource, callback);
     }
+    
+    std::unique_ptr<URTAutoRequest> autoRequest = std::make_unique<URTAutoRequest>();
+    std::weak_ptr<std::unique_ptr<AsyncRequest>> offlineRequest = autoRequest->offlineRequest;
+    const Resource copyResource = resource;
+    
+    auto onlineReq = m_default_file_source->request(resource, [this, &resource, callback, offlineRequest, copyResource](Response res)
+    {
+        if ( res.error == nullptr )
+        {
+            callback( res );
+            return;
+        }
+        
+        if (auto olr = offlineRequest.lock())
+        {
+            auto offlineReq = m_urt_file_source->request(copyResource, callback);
+            *olr = std::move(offlineReq);
+        }
+    });
+    
+    autoRequest->onlineRequest = std::move(onlineReq);
+    offlineRequest = autoRequest->offlineRequest;
+    
+    return std::move(autoRequest);
 }
 
     

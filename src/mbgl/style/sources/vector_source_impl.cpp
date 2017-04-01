@@ -14,15 +14,7 @@ VectorSource::Impl::Impl(std::string id_, Source& base_, variant<std::string, Ti
 
 std::unique_ptr<Tile> VectorSource::Impl::createTile(const OverscaledTileID& tileID,
                                                      const UpdateParameters& parameters) {
-    
-    if ( parameters.fileSource.isUsingUrtSource( tileID.overscaledZ ) )
-    {
-        return std::make_unique<UrtVectorTile>(tileID, base.getID(), parameters, tileset);
-    }
-    else
-    {
-        return std::make_unique<VectorTile>(tileID, base.getID(), parameters, tileset);
-    }
+    return std::make_unique<AutoVectorTile>(tileID, base.getID(), parameters, tileset);
 }
 
 } // namespace style
