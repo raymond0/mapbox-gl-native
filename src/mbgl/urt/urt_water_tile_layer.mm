@@ -67,10 +67,4 @@ void WaterTileLayer::finalizeInternalItems()
 }
 
 
-void WaterTileLayer::setWholeGroundType( item_type groundType_ )
-{
-    //assert ( wholeTileGroundType == type_none );
-    groundType = groundType_;
-}
-
 }

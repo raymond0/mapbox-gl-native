@@ -26,7 +26,6 @@ public:
 private:
     vector<pair<MapItem *, bool> > landFeatures;
     vector<pair<MapItem *, bool> > waterFeatures;
-    item_type groundType;
 };
 
     

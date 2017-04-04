@@ -10,6 +10,7 @@
 #include "urt_vector_tile_road_feature.hpp"
 #include "urt_vector_tile_place_label_feature.hpp"
 #include "urt_vector_tile_road_label_feature.hpp"
+#include "urt_vector_tile_whole_area_feature.hpp"
 
 namespace mbgl {
 
@@ -29,6 +30,22 @@ unique_ptr<GeometryTileFeature> UrtTileLayer::getFeature(std::size_t i) const
 string UrtTileLayer::getName() const
 {
     return name;
+}
+    
+    
+void UrtTileLayer::setWholeGroundType( item_type _groundType )
+{
+    groundType = _groundType;
+}
+    
+    
+void UrtTileLayer::finalizeInternalItems()
+{
+    if ( groundType == type_whole_area_type_wood )
+    {
+        auto feature = make_unique<UrtVectorTileWholeAreaFeature>(region, groundType);
+        features.emplace_back( move(feature) );
+    }
 }
     
     

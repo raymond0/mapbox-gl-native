@@ -315,9 +315,16 @@ void UrtVectorTileData::addMapTile( MapTile *mapTile, bool fromProxyTile, bool s
     item_type tileCover = [mapTile completeGroundType];
     if ( tileCover != type_none )
     {
-        auto waterLayer = dynamic_cast<WaterTileLayer *>(layers->at(LayerPolyWater).get());
+        auto waterLayer = layers->at(LayerPolyWater).get();
         assert( waterLayer != nullptr );
         waterLayer->setWholeGroundType(tileCover);
+        
+        if ( tileCover == type_whole_area_type_wood )
+        {
+            auto landuse = layers->at(LayerPolyWood).get();
+            assert( landuse != nullptr );
+            landuse->setWholeGroundType(tileCover);
+        }
     }
 }
 
@@ -376,7 +383,10 @@ void UrtVectorTileData::parse() const
         }
     }
     
-    layers->at(LayerPolyWater)->finalizeInternalItems();
+    for ( int i = LayerPolyWood; i < LayerCount; i++ )
+    {
+        layers->at(i)->finalizeInternalItems();
+    }
 }
     
 
