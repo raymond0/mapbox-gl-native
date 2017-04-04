@@ -63,7 +63,6 @@ LayerType LayerForItemType( unsigned int itemType )
         case type_poly_ocean:   // Caspian Sea only these days.
         case type_poly_land:
         case type_poly_water:
-        case type_poly_water_land_hole:
             return LayerPolyWater;
         case type_poly_wood:
         case type_poly_park:
@@ -235,7 +234,8 @@ bool UrtVectorTileData::shouldIncludeItemType( unsigned int itemType, NSInteger 
 void UrtVectorTileData::addMapTile( MapTile *mapTile, bool fromProxyTile, bool shouldRenderOceans, NSInteger tileLevel ) const
 {
     NSEnumerator *mapItemEnumerator = [mapTile mapItemEnumerator];
-    MapItem *mapItem;
+    MapItem *lastMapItem = nil;
+    MapItem *mapItem = nil;
     
     while ( (mapItem = [mapItemEnumerator nextObject]) != nil )
     {
@@ -247,6 +247,7 @@ void UrtVectorTileData::addMapTile( MapTile *mapTile, bool fromProxyTile, bool s
             mapItem = [mapTile resolveUpreferenceForItem:mapItem];
             if ( mapItem == nil )
             {
+                lastMapItem = nil;
                 continue;
             }
             wasParentRef = YES;
@@ -255,21 +256,30 @@ void UrtVectorTileData::addMapTile( MapTile *mapTile, bool fromProxyTile, bool s
         
         if ( ! shouldIncludeItemType( mapItem.itemType, tileLevel ) )
         {
+            lastMapItem = nil;
             continue;
         }
         
-        if ( mapItem.itemType == type_poly_ocean || mapItem.itemType == type_poly_water_land_hole )
+        if ( mapItem.itemType == type_poly_ocean )
         {
             if ( ! shouldRenderOceans )
             {
+                lastMapItem = nil;
                 continue;
             }
+        }
+        
+        if ( mapItem.itemType == type_poly_inner_hole )
+        {
+            [lastMapItem addPolygonHole:mapItem];
+            continue;
         }
         
         LayerType layer = LayerForItemType( itemType );
         
         if ( layer == LayerCount )
         {
+            lastMapItem = nil;
             continue;
         }
         
@@ -294,6 +304,7 @@ void UrtVectorTileData::addMapTile( MapTile *mapTile, bool fromProxyTile, bool s
 #endif
         
         layers->at(layer)->addMapItem( mapItem, fromProxyTile );
+        lastMapItem = mapItem;
         
         if ( layer == LayerRoad )
         {

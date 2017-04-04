@@ -25,7 +25,7 @@ UrtVectorTileFeature::MapboxTagsPtr UrtVectorTileFeature::GetMapboxTags() const
                 return pair<string, string>("park", "garden");
             case type_poly_ocean:
             case type_poly_water:
-            case type_poly_water_land_hole:
+            case type_poly_inner_hole:
 #ifdef DENSITY_DEBUGGING
             case type_poly_debug_city_boundary:
 #endif
@@ -250,10 +250,12 @@ GeometryCollection UrtVectorTileFeature::ClippedPolygonInLocalCoords( MapItem *i
     for ( auto &outPolygon : outPolygons )
     {
         auto localPolygon = ConvertToMapboxCoordinates( outPolygon );
-        if ( localPolygon.size() >= 3 )
+        if ( localPolygon.size() < 3 )
         {
-            lines.emplace_back( localPolygon );
+            continue;
         }
+
+        lines.emplace_back( localPolygon );
     }
     
     return lines;
@@ -429,7 +431,7 @@ void EmbedEdgeHolesIntoParent( GeometryCoordinates &parent, GeometryCollection &
     {
         auto &hole = holes[holeIdx];
         
-        if ( EdgeForCoord( hole[0] ) == EdgeNotAnEdge )
+        if ( EdgeForCoord( hole[0] ) == EdgeNotAnEdge || EdgeForCoord( hole.back() ) == EdgeNotAnEdge )
         {
             continue;
         }
@@ -585,12 +587,12 @@ GeometryCollection UrtVectorTileFeature::getGeometries() const
         if ( outerPolygons.size() > 1 && holes.size() > 0 )
         {
             GeometryCollection lines;
-            AssignHolesToOuterPolygons( outerPolygons, holes, lines );
+            AssignHolesToOuterPolygons( outerPolygons, holes, lines );  // Calls EmbedEdgeHolesIntoParent
             return lines;
         }
         else
         {
-            EmbedEdgeHolesIntoParent( outerPolygons[0], holes ); // Calls AssignHolesToOuterPolygons
+            EmbedEdgeHolesIntoParent( outerPolygons[0], holes );
             outerPolygons.insert( outerPolygons.end(), holes.begin(), holes.end() );
             return outerPolygons;
         }

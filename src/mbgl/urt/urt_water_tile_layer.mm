@@ -17,7 +17,7 @@ void WaterTileLayer::addMapItem( MapItem *mapItem, bool fromProxyTile )
     {
         waterFeatures.emplace_back( mapItem, fromProxyTile );
     }
-    else if ( mapItem.itemType == type_poly_water_land_hole )
+    else if ( mapItem.itemType == type_poly_inner_hole )
     {
         assert( waterFeatures.size() > 0 && "Can have a land hole without first having some water" );
         assert( waterFeatures.back().first.itemType == type_poly_ocean || waterFeatures.back().first.itemType == type_poly_water && "trying to add a water hole to something thats not ocean" );
