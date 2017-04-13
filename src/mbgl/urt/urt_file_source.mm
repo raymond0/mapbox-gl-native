@@ -6,6 +6,28 @@
 //
 //
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#pragma GCC diagnostic ignored "-Wpragmas"
+#pragma GCC diagnostic ignored "-Wdeprecated-register"
+#pragma GCC diagnostic ignored "-Wshorten-64-to-32"
+#pragma GCC diagnostic ignored "-Wunused-local-typedefs"
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <sstream>
+#include <boost/iostreams/stream.hpp>
+#include <boost/iostreams/stream_buffer.hpp>
+#include <boost/iostreams/filtering_streambuf.hpp>
+#include <boost/iostreams/copy.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#pragma GCC diagnostic pop
+
 #include <mbgl/urt/urt_file_source.hpp>
 #include <mbgl/util/async_task.hpp>
 #import "UrtFile/UrtFile.h"
@@ -168,8 +190,9 @@ NSString *MapboxUrlStringToFilename( NSString *urlString )
     
     NSString *onlyPath = [urlString substringFromIndex:9];
     NSString *targetFilename = [onlyPath stringByReplacingOccurrencesOfString:@"/" withString:@"-"];
+    NSString *singleEncoding = [targetFilename stringByReplacingOccurrencesOfString:@"%25" withString:@"%"];
     
-    return [@"RESOURCE-" stringByAppendingString:targetFilename];
+    return [@"RESOURCE-" stringByAppendingString:singleEncoding];
 }
     
     
@@ -191,20 +214,44 @@ std::unique_ptr<AsyncRequest> URTFileSource::Impl::OtherRequest(const Resource& 
     NSURL *bundleUrl = [[NSBundle mainBundle] URLForResource:filename withExtension:nil];
     NSData *data = [NSData dataWithContentsOfURL:bundleUrl];
     
-    if ( data == nil )
+    if ( data != nil )
     {
-        // URL base: https://api.mapbox.com/fonts/v1/mapbox/DIN%20Offc%20Pro%20Regular%2cArial%20Unicode%20MS%20Regular/8192-8447.pbf?access_token=pk.eyJ1IjoicmF5aHVudGVydWsiLCJhIjoiY2lmMnF5bzZ5MDBqaHN2bHlheXV0djZ2OCJ9.aJKNtMIdNxgbz_2PDjr_fg&events=true
-        NSLog( @"Missing request data!!! URL was %@", urlStr );
-        response.error = std::make_unique<Response::Error>(Response::Error::Reason::Other, "Could not load resource" );
-        callback(response);
-        return nullptr;
+        response.data = std::make_shared<std::string>((const char *)[data bytes], [data length]);
+        callback( response );
+        
+        auto req = std::make_unique<AsyncRequest>();
+        return req;
     }
     
-    response.data = std::make_shared<std::string>((const char *)[data bytes], [data length]);
-    callback( response );
+    NSURL *bundleUrlZ = [[NSBundle mainBundle] URLForResource:filename withExtension:@"z"];
+    NSData *compressedData = [NSData dataWithContentsOfURL:bundleUrlZ];
     
-    auto req = std::make_unique<AsyncRequest>();
-    return req;
+    if ( compressedData != nil )
+    {
+        std::string compressedStr((const char *)[compressedData bytes], [compressedData length]);
+        std::stringstream compressedStream ( compressedStr );
+        boost::iostreams::filtering_streambuf<boost::iostreams::input> in;
+        in.push(boost::iostreams::gzip_decompressor());
+        in.push(compressedStream);
+        
+        std::stringstream dst;
+        boost::iostreams::filtering_streambuf<boost::iostreams::output> out(dst);
+        
+        boost::iostreams::copy(in, out);
+        
+        response.data = std::make_shared<std::string>(dst.str());
+        callback( response );
+        
+        auto req = std::make_unique<AsyncRequest>();
+        return req;
+    }
+
+    
+    // URL base: https://api.mapbox.com/fonts/v1/mapbox/DIN%20Offc%20Pro%20Regular%2cArial%20Unicode%20MS%20Regular/8192-8447.pbf?access_token=pk.eyJ1IjoicmF5aHVudGVydWsiLCJhIjoiY2lmMnF5bzZ5MDBqaHN2bHlheXV0djZ2OCJ9.aJKNtMIdNxgbz_2PDjr_fg&events=true
+    NSLog( @"Missing request data!!! URL was %@", urlStr );
+    response.error = std::make_unique<Response::Error>(Response::Error::Reason::Other, "Could not load resource" );
+    callback(response);
+    return nullptr;    
 }
 
     
