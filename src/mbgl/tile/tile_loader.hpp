@@ -22,7 +22,7 @@ public:
                const OverscaledTileID&,
                const style::UpdateParameters&,
                const Tileset&);
-    ~TileLoader();
+    ~TileLoader() = default;
 
     using Necessity = Resource::Necessity;
 

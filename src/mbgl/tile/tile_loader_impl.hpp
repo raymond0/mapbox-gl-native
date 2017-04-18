@@ -44,8 +44,8 @@ TileLoader<T>::TileLoader(T& tile_,
     }
 }
 
-template <typename T>
-TileLoader<T>::~TileLoader() = default;
+//template <typename T>
+//TileLoader<T>::~TileLoader() = default;
 
 template <typename T>
 void TileLoader<T>::loadOptional() {
