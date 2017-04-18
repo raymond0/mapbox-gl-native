@@ -9,6 +9,7 @@
 #include "urt_vector_tile_feature.hpp"
 #import <mbgl/util/constants.hpp>
 #import "rayclipper.h"
+#import <iostream>
 
 namespace mbgl
 
@@ -54,6 +55,7 @@ UrtVectorTileFeature::MapboxTagsPtr UrtVectorTileFeature::GetMapboxTags() const
 
 UrtVectorTileFeature::UrtVectorTileFeature(MapItem *mapItem_, Region *region_, bool fromProxyTile_)
 {
+    properties = nullptr;
     mapItem = mapItem_;
     region = region_;
     fromProxyTile = fromProxyTile_;
@@ -76,6 +78,10 @@ FeatureType UrtVectorTileFeature::getType() const
 
 
 optional<Value> UrtVectorTileFeature::getValue(const std::string& key) const {
+    if ( properties == nullptr )
+    {
+        return optional<Value>();
+    }
     
     auto result = properties->find(key);
     if (result == properties->end()) {
@@ -244,316 +250,88 @@ GeometryCollection UrtVectorTileFeature::ClippedPolygonInLocalCoords( MapItem *i
         inputPolygon[i] = coords[i];
     }
     
-    rayclipper::rect rect = {region.minimum.coord, region.maximum.coord};
-    auto outPolygons = RayClipPolygon( inputPolygon, rect );
+    for ( MapItem *hole in mapItem.polygonHoles )
+    {
+        coord *holeCoords = nil;
+        NSInteger nrHoleCoords = [hole lengthOfCoordinatesWithData:&holeCoords];
+
+        rayclipper::Polygon polygonHole;
+        polygonHole.resize( nrHoleCoords );
+        for ( NSInteger i = 0; i < nrHoleCoords; i++ )
+        {
+            polygonHole[i] = holeCoords[i];
+        }
+
+        std::reverse(polygonHole.begin(), polygonHole.end());
+        inputPolygon.holes.emplace_back( polygonHole );
+    }
     
-    for ( auto &outPolygon : outPolygons )
+    rayclipper::rect rect = {region.minimum.coord, region.maximum.coord};
+    vector<rayclipper::Polygon> outputPolygons;
+    RayClipPolygon( inputPolygon, rect, outputPolygons );
+    
+    for ( auto &outPolygon : outputPolygons )
     {
         auto localPolygon = ConvertToMapboxCoordinates( outPolygon );
+        
         if ( localPolygon.size() < 3 )
         {
             continue;
         }
-
+        
         lines.emplace_back( localPolygon );
+        
+        for ( auto &hole : outPolygon.holes )
+        {
+            auto localHole = ConvertToMapboxCoordinates( hole );
+            if ( localHole.size() < 3 )
+            {
+                continue;
+            }
+            
+            lines.emplace_back( localHole );
+        }
+
     }
     
     return lines;
 }
     
     
-int UrtVectorTileFeature::PointInPolygon( const GeometryCoordinates &polygon, const GeometryCoordinate &coordinate ) const
+void WriteMapItemCoords( MapItem *item, bool writeHoles, int nrHoles, FILE *fout )
 {
-    //returns 0 if false, +1 if true, -1 if coordinate ON polygon boundary
-    int result = 0;
-    size_t cnt = polygon.size();
-    if (cnt < 3) return 0;
-    GeometryCoordinate ip = polygon[0];
+    coord *coords = nil;
+    int nrCoords = (int) [item lengthOfCoordinatesWithData:&coords];
     
-    for(size_t i = 1; i <= cnt; ++i)
+    fwrite(&nrCoords, sizeof(int), 1, fout);
+    if ( writeHoles )
     {
-        GeometryCoordinate ipNext = (i == cnt ? polygon[0] : polygon[i]);
-        if (ipNext.y == coordinate.y)
-        {
-            if ((ipNext.x == coordinate.x) || (ip.y == coordinate.y &&
-                ((ipNext.x > coordinate.x) == (ip.x < coordinate.x)))) return -1;
-        }
-        if ((ip.y < coordinate.y) != (ipNext.y < coordinate.y))
-        {
-            if (ip.x >= coordinate.x)
-            {
-                if (ipNext.x > coordinate.x) result = 1 - result;
-                else
-                {
-                    double d = (double)(ip.x - coordinate.x) * (ipNext.y - coordinate.y) -
-                    (double)(ipNext.x - coordinate.x) * (ip.y - coordinate.y);
-                    if (!d) return -1;
-                    if ((d > 0) == (ipNext.y > ip.y)) result = 1 - result;
-                }
-            } else
-            {
-                if (ipNext.x > coordinate.x)
-                {
-                    double d = (double)(ip.x - coordinate.x) * (ipNext.y - coordinate.y) -
-                    (double)(ipNext.x - coordinate.x) * (ip.y - coordinate.y);
-                    if (!d) return -1;
-                    if ((d > 0) == (ipNext.y > ip.y)) result = 1 - result;
-                }
-            }
-        }
-        ip = ipNext;
-    } 
-    return result;
-}
-    
-typedef enum
-{
-    EdgeTop = 0,
-    EdgeRight = 1,
-    EdgeBottom = 2,
-    EdgeLeft = 3,
-    EdgeNotAnEdge = 4
-} EdgeType;
-
-    
-EdgeType EdgeForCoord( const GeometryCoordinate &coord )
-{
-    if ( coord.x == 0 && coord.y == 0 )
-    {
-        return EdgeTop;
+        fwrite(&nrHoles, sizeof(int), 1, fout);
     }
     
-    if ( coord.x == util::EXTENT && coord.y == 0 )
-    {
-        return EdgeRight;
-    }
-
-    if ( coord.x == util::EXTENT && coord.y == util::EXTENT )
-    {
-        return EdgeBottom;
-    }
-    
-    if ( coord.x == 0 && coord.y == util::EXTENT )
-    {
-        return EdgeLeft;
-    }
-    
-    if ( coord.y == 0 ) return EdgeTop;
-    if ( coord.x == util::EXTENT ) return EdgeRight;
-    if ( coord.y == util::EXTENT ) return EdgeBottom;
-    if ( coord.x == 0 ) return EdgeLeft;
-    
-    //assert ( false );
-    return EdgeNotAnEdge;    // Some compiler configs shout error otherwise
+    fwrite(coords, sizeof(coord), nrCoords, fout);
+    fflush(fout);
 }
     
     
-bool PointPreceedsOnEdge( EdgeType edge, GeometryCoordinate first, GeometryCoordinate second )
+void WriteMapItem( rayclipper::rect rect, MapItem *mapItem )
 {
-    switch ( edge )
+    static FILE *fout = NULL;
+    if ( fout == NULL )
     {
-        case EdgeTop:
-            assert( first.y == second.y );
-            return first.x <= second.x;
-        case EdgeRight:
-            assert( first.x == second.x );
-            return first.y <= second.y;
-        case EdgeBottom:
-            assert( first.y == second.y );
-            return second.x <= first.x;
-        case EdgeLeft:
-            assert( first.x == second.x );
-            return second.y <= first.y;
-        case EdgeNotAnEdge:
-            assert( false );
-            return false;
-    }
-}
-    
-    
-int IndexOfEdgeCoordinateInPolygon( const GeometryCoordinates &polygon, const GeometryCoordinate coordinate )
-{
-    assert ( EdgeForCoord( coordinate ) != EdgeNotAnEdge );
-    
-    EdgeType targetEdge = EdgeForCoord( coordinate );
-    
-    for ( size_t i = 0; i < polygon.size(); i++ )
-    {
-        const GeometryCoordinate &first = polygon[i];
-        const GeometryCoordinate &second = polygon[(i == polygon.size() - 1) ? 0 : (i + 1)];
-
-        // Both points must be on an edge, first point must be on targetEdge
-        
-        if ( EdgeForCoord( first ) == EdgeNotAnEdge )
-        {
-            continue;
-        }
-        
-        if ( EdgeForCoord( second ) == EdgeNotAnEdge )
-        {
-            continue;
-        }
-
-        EdgeType firstEdge = EdgeForCoord( first );
-        
-        if ( firstEdge != targetEdge )
-        {
-            continue;
-        }
-        
-        assert( firstEdge == targetEdge );
-        
-        if ( ! PointPreceedsOnEdge( targetEdge, first, coordinate) )
-        {
-            continue;
-        }
-        
-        EdgeType secondEdge = EdgeForCoord( second );
-        
-        if ( secondEdge != targetEdge || PointPreceedsOnEdge(targetEdge, coordinate, second ) )
-        {
-            return (int) i;
-        }
+        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+        NSString *basePath = paths.firstObject;
+        NSString *fullPath = [basePath stringByAppendingPathComponent:@"DebugPolys.bin"];
+        fout = fopen( fullPath.UTF8String, "wb" );
     }
     
-    assert(false);
-    return -1;
-}
+    fwrite(&rect, sizeof(rect), 1, fout);
     
-
-//
-//  EmbedEdgeHolesIntoParent - Earcut seems to have bugs with holes that touch the boundaries. Also it's faster
-//  for us to handle these here, as it's less work for earcut to do that otherwise (AFAICT).
-//
-void EmbedEdgeHolesIntoParent( GeometryCoordinates &parent, GeometryCollection &holes )
-{
-    for ( size_t holeIdx = 0; holeIdx < holes.size(); holeIdx++ )
+    WriteMapItemCoords(mapItem, true, (int) mapItem.polygonHoles.count, fout);
+    
+    for ( MapItem *hole in mapItem.polygonHoles )
     {
-        auto &hole = holes[holeIdx];
-        
-        if ( EdgeForCoord( hole[0] ) == EdgeNotAnEdge || EdgeForCoord( hole.back() ) == EdgeNotAnEdge )
-        {
-            continue;
-        }
-     
-        int insertionIndex = IndexOfEdgeCoordinateInPolygon( parent, hole[0] );
-        if ( insertionIndex == -1 )
-        {
-            printf("Parent polygon does not contain child polygon\n");
-            continue;
-        }
-        
-        int endInsertionIndex = IndexOfEdgeCoordinateInPolygon( parent, hole.back() );
-        if ( endInsertionIndex == -1 )
-        {
-            printf("Parent polygon END does not contain child polygon, but start did???\n");
-            continue;
-        }
-
-        if ( insertionIndex < endInsertionIndex )
-        {
-            // We cut 1+ corners
-            __unused int nrCutCorners = endInsertionIndex - insertionIndex;
-            assert( nrCutCorners < 4 );
-            
-            parent.erase( parent.begin() + insertionIndex + 1, parent.begin() + endInsertionIndex );
-        }
-        else if ( endInsertionIndex < insertionIndex )
-        {
-            // We're inserting over the start/end boundary of the parent while cutting corners
-            size_t nrCutCornersEnd = parent.size() - insertionIndex - 1;
-            size_t nrCutCornersStart = endInsertionIndex + 1;
-            
-            assert (nrCutCornersStart + nrCutCornersEnd < 4);
-            assert (nrCutCornersStart > 0);
-            
-            if ( nrCutCornersEnd > 0 )
-            {
-                parent.erase( parent.begin() + insertionIndex + 1, parent.end() );
-            }
-            
-            parent.erase( parent.begin(), parent.begin() + nrCutCornersStart );
-        }
-        
-        //
-        //  Remove corners if we are chopping off part of a rectangle. i.e. the top part in a rectangle that
-        //  should render only the bottom part
-        //
-        while ( parent[insertionIndex] == hole.front() )
-        {
-            if ( parent.size() < 2 || hole.size() < 2 )
-            {
-                //
-                // Will not happen with valid, corrently clipped data. Could blow up with bad data.
-                //
-                printf( "EmbedEdgeHolesIntoParent: Edge case for bad data handled\n" );
-                break;
-            }
-            
-            int nextParentIndex = insertionIndex > 0 ? insertionIndex - 1 : (int) parent.size() - 1;
-            EdgeType parentNextEdge = EdgeForCoord( parent[nextParentIndex] );
-            EdgeType holeNextEdge = EdgeForCoord( hole[1] );
-            
-            if ( parentNextEdge != holeNextEdge )
-            {
-                break;
-            }
-            
-            parent.erase( parent.begin() + insertionIndex );
-            hole.erase( hole.begin() );
-
-            insertionIndex--;
-            if ( insertionIndex < 0 ) insertionIndex = (int) parent.size() - 1;
-        }
-        
-        parent.insert( parent.begin() + insertionIndex + 1, hole.begin(), hole.end() );
-        
-        holes.erase( holes.begin() + holeIdx );
-        holeIdx--;
-    }
-}
-    
-
-void UrtVectorTileFeature::AssignHolesToOuterPolygons( const GeometryCollection &outerPolygons, const GeometryCollection &holes,
-                                                       GeometryCollection &completed ) const
-{
-    vector<vector<int> > polygonHoles(outerPolygons.size());
-    
-    for ( int holeIdx = 0; holeIdx < (int) holes.size(); holeIdx++ )
-    {
-        auto &hole = holes[holeIdx];
-        
-        for ( size_t polygonIdx = 0; polygonIdx < outerPolygons.size(); polygonIdx++ )
-        {
-            int pointInPoly = PointInPolygon( outerPolygons[polygonIdx], hole[0] );
-            
-            if ( pointInPoly == -1 )
-            {
-                pointInPoly = PointInPolygon( outerPolygons[polygonIdx], hole[hole.size() / 2] );
-            }
-            
-            if ( pointInPoly != 0 )
-            {
-                polygonHoles[polygonIdx].emplace_back(holeIdx);
-                break;
-            }
-        }
-    }
-    
-    for ( size_t polygonIdx = 0; polygonIdx < outerPolygons.size(); polygonIdx++ )
-    {
-        auto outer = outerPolygons[polygonIdx];
-        GeometryCollection holesForOuter;
-        
-        for ( int holeIdx : polygonHoles[polygonIdx] )
-        {
-            holesForOuter.emplace_back( holes[holeIdx] );
-        }
-        
-        EmbedEdgeHolesIntoParent( outer, holesForOuter );
-        
-        completed.emplace_back( outer );
-        completed.insert( completed.end(), holesForOuter.begin(), holesForOuter.end() );
+        WriteMapItemCoords(hole, false, 0, fout);
     }
 }
 
@@ -563,6 +341,11 @@ GeometryCollection UrtVectorTileFeature::getGeometries() const
     //
     //  Should handle everything except roads
     //
+    /*if ( mapItem.polygonHoles.count > 0 )
+    {
+        rayclipper::rect rect = {region.minimum.coord, region.maximum.coord};
+        WriteMapItem( rect, mapItem);
+    }*/
     
     //
     //  Complex case - tile have been combined. We need to clip the item to the tile.
@@ -572,30 +355,8 @@ GeometryCollection UrtVectorTileFeature::getGeometries() const
     //
     if ( mapItem.itemType >= type_area && fromProxyTile )
     {
-        GeometryCollection outerPolygons = ClippedPolygonInLocalCoords(mapItem);        
-        GeometryCollection holes;
-        for ( MapItem *hole in mapItem.polygonHoles )
-        {
-            GeometryCollection holeLines = ClippedPolygonInLocalCoords(hole);
-            for ( auto &holeLine : holeLines )
-            {
-                std::reverse(holeLine.begin(), holeLine.end());
-                holes.emplace_back( holeLine );
-            }
-        }
-        
-        if ( outerPolygons.size() > 1 && holes.size() > 0 )
-        {
-            GeometryCollection lines;
-            AssignHolesToOuterPolygons( outerPolygons, holes, lines );  // Calls EmbedEdgeHolesIntoParent
-            return lines;
-        }
-        else
-        {
-            EmbedEdgeHolesIntoParent( outerPolygons[0], holes );
-            outerPolygons.insert( outerPolygons.end(), holes.begin(), holes.end() );
-            return outerPolygons;
-        }
+        GeometryCollection outerPolygons = ClippedPolygonInLocalCoords(mapItem);
+        return outerPolygons;
     }
     
     //
