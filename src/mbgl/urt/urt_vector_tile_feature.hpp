@@ -16,7 +16,6 @@
 
 namespace mbgl
 {
-    
     using namespace std;
     
     class UrtVectorTileFeature : public GeometryTileFeature {
@@ -34,11 +33,31 @@ namespace mbgl
         typedef unordered_map<string,Value> MapboxTags;
         typedef shared_ptr<MapboxTags> MapboxTagsPtr;
         virtual MapboxTagsPtr GetMapboxTags() const;    // To override in subclasses
+        
+        typedef struct CoordRange
+        {
+            typedef enum
+            {
+                Empty,
+                Internal,       // All (except maybe first and last points) are relevant
+                Intersection    // No points inside, but 2 points intersect
+            } RangeType;
+
+            NSInteger index;
+            NSInteger length;
+            RangeType rangeType;
+            
+            CoordRange( NSInteger _index, NSInteger _length, RangeType _rangeType )
+            {
+                index = _index;
+                length = _length;
+                rangeType = _rangeType;
+            }
+        } CoordRange;
 
         Region *region;
         bool fromProxyTile;
         MapboxTagsPtr properties;
-        typedef std::pair<uint32_t, uint32_t> CoordRange;
         vector<CoordRange> RelevantCoordinateRangesInTileRect( MapItem *item ) const;
         GeometryCoordinates ConvertToMapboxCoordinates( const vector<coord> &globalCoords ) const;
         GeometryCoordinates GetMapboxCoordinatesInRange( MapItem *item, CoordRange coordRange ) const;

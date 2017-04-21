@@ -118,9 +118,10 @@ GeometryCollection UrtVectorTileWaterFeature::getGeometries() const
     // is completely contained within the tile though?
     //
     assert( landAreas.size() == 0 );
-    if ( landAreas.size() == 0 )
-        return lines;
-    
+    //if ( landAreas.size() == 0 )
+    return lines;
+
+#if 0
     bool totalLandCoverage = false;
     
     for ( auto &landArea : landAreas )
@@ -245,6 +246,7 @@ GeometryCollection UrtVectorTileWaterFeature::getGeometries() const
 #endif
     
     return lines;
+#endif
 }
     
 }

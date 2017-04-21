@@ -33,6 +33,7 @@ public:
     
 void RayClipPolygon( const Polygon &inputPolygon, struct rect rect, std::vector<Polygon> &outputPolygons );
 void CleanPolygon( const Polygon &inputPolygon, Polygon &outputPolygon );
+std::vector<struct coord> LineClippedToRect( const struct coord &p1, const struct coord &p2, const struct rect &rect );
 
 }
 

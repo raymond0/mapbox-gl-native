@@ -136,7 +136,7 @@ GeometryCollection UrtVectorTileRoadLabelFeature::getGeometries() const
 double UrtVectorTileRoadLabelFeature::distanceOfLongestSection() const
 {
     auto ls = longestSection();
-    if ( ls.second == 0 )
+    if ( ls.length == 0 )
     {
         return 0;
     }
@@ -151,7 +151,7 @@ UrtVectorTileFeature::CoordRange UrtVectorTileRoadLabelFeature::longestSection()
     
     if ( coordinateRanges.size() == 0 )
     {
-        return CoordRange(0, 0);
+        return CoordRange(0, 0, UrtVectorTileFeature::CoordRange::Empty);
     }
 
     double longestDistance = 0;
@@ -161,7 +161,7 @@ UrtVectorTileFeature::CoordRange UrtVectorTileRoadLabelFeature::longestSection()
     {
         auto range = coordinateRanges[i];
         
-        if ( range.second < 2 )
+        if ( range.length < 2 )
         {
             continue;
         }
@@ -174,9 +174,9 @@ UrtVectorTileFeature::CoordRange UrtVectorTileRoadLabelFeature::longestSection()
         }
     }
     
-    if ( coordinateRanges[longestIndex].second < 2 )
+    if ( coordinateRanges[longestIndex].length < 2 )
     {
-        return CoordRange(0, 0);
+        return CoordRange(0, 0, UrtVectorTileFeature::CoordRange::Empty);
     }
 
     return coordinateRanges[longestIndex];
@@ -186,14 +186,14 @@ UrtVectorTileFeature::CoordRange UrtVectorTileRoadLabelFeature::longestSection()
 double UrtVectorTileRoadLabelFeature::distanceOfSection(UrtVectorTileFeature::CoordRange &section) const
 {
     coord *coords;
-    uint32_t nrCoords __unused = (uint32_t) [mapItem lengthOfCoordinatesWithData:&coords];
+    NSInteger nrCoords __unused = [mapItem lengthOfCoordinatesWithData:&coords];
 
-    assert ( nrCoords >= section.first + section.second );
-    assert( section.second > 1 );
+    assert ( nrCoords >= section.index + section.length );
+    assert( section.length > 1 );
     
     double distance = 0;
     
-    for ( uint32_t i = 0; i < section.second - 1; i++ )
+    for ( NSInteger i = 0; i < section.length - 1; i++ )
     {
         distance += LengthBetweenCoords( coords[i], coords[i + 1] );
     }

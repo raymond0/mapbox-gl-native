@@ -200,6 +200,85 @@ vector<struct coord> AllIntersectionsOfRect( const struct coord &p1, const struc
 }
     
     
+//
+//  LineClippedToRect - Clip a line to a rect when both points are outside
+//
+vector<struct coord> LineIntersectionOfRect( const struct coord &p1, const struct coord &p2, const struct rect &rect )
+{
+    vector<struct coord> intersections = AllIntersectionsOfRect(p1, p2, rect);
+    
+    vector<struct coord> output;
+    
+    if ( intersections.size() != 2 )
+    {
+        return output;
+    }
+    
+    assert ( intersections[0].y == rect.l.y || intersections[0].y == rect.h.y ||
+             intersections[0].x == rect.l.x || intersections[0].x == rect.h.x );
+    assert ( intersections[1].y == rect.l.y || intersections[1].y == rect.h.y ||
+             intersections[1].x == rect.l.x || intersections[1].x == rect.h.x );
+    
+    assert( ! coord_is_equal(intersections[0], intersections[1]) );
+    
+    double d0 = CoordDistance(p1, intersections[0]);
+    double d1 = CoordDistance(p1, intersections[1]);
+    
+    if ( d0 <= d1 )
+    {
+        output.emplace_back(intersections[0]);
+        output.emplace_back(intersections[1]);
+    }
+    else
+    {
+        output.emplace_back(intersections[1]);
+        output.emplace_back(intersections[0]);
+    }
+    
+    return output;
+}
+    
+
+//
+//  LineClippedToRect - Clip a line to a rect under all circumstances
+//
+std::vector<struct coord> LineClippedToRect( const struct coord &p1, const struct coord &p2, const struct rect &rect )
+{
+    std::vector<struct coord> output;
+    
+    bool p1InRect = rect.l.x <= p1.x && p1.x <= rect.h.x && rect.l.y <= p1.y && p1.y <= rect.h.y;
+    bool p2InRect = rect.l.x <= p2.x && p2.x <= rect.h.x && rect.l.y <= p2.y && p2.y <= rect.h.y;
+    
+    if ( p1InRect && p2InRect )
+    {
+        output.emplace_back(p1);
+        output.emplace_back(p2);
+        return output;
+    }
+    
+    if ( !p1InRect && !p2InRect )
+    {
+        return LineIntersectionOfRect(p1, p2, rect);
+    }
+    
+    if ( p1InRect )
+    {
+        vector<struct coord> intersections = AllIntersectionsOfRect(p1, p2, rect);
+        assert( intersections.size() == 1 );
+        output.emplace_back(p1);
+        output.emplace_back(intersections[0]);
+        return output;
+    }
+    
+    assert( p2InRect );
+    vector<struct coord> intersections = AllIntersectionsOfRect(p1, p2, rect);
+    assert( intersections.size() == 1 );
+    output.emplace_back(intersections[0]);
+    output.emplace_back(p2);
+    return output;
+}
+    
+    
 bool LineIntersetsRect(const struct coord &p1, const struct coord &p2, const struct rect r)
 {
     if ( p1.x < r.l.x && p2.x < r.l.x ) return false;
@@ -363,33 +442,13 @@ void GetAllSubContours( const Contour &inputPolygon, struct rect rect, size_t la
                 //
                 // Both outside and currently outside - could be intersection
                 //
-                vector<struct coord> intersections = AllIntersectionsOfRect(firstPoint, secondPoint, rect);
-                
+                vector<struct coord> intersections = LineIntersectionOfRect(firstPoint, secondPoint, rect);
+            
                 if ( intersections.size() == 2 )
                 {
                     currentPolygon = shared_ptr<Polygon>(new Polygon());
-                    
-                    assert ( intersections[0].y == rect.l.y || intersections[0].y == rect.h.y ||
-                             intersections[0].x == rect.l.x || intersections[0].x == rect.h.x );
-                    assert ( intersections[1].y == rect.l.y || intersections[1].y == rect.h.y ||
-                             intersections[1].x == rect.l.x || intersections[1].x == rect.h.x );
-                    
-                    assert( ! coord_is_equal(intersections[0], intersections[1]) );
-                    
-                    double d0 = CoordDistance(firstPoint, intersections[0]);
-                    double d1 = CoordDistance(firstPoint, intersections[1]);
-                    
-                    if ( d0 <= d1 )
-                    {
-                        currentPolygon->emplace_back(intersections[0]);
-                        currentPolygon->emplace_back(intersections[1]);
-                    }
-                    else
-                    {
-                        currentPolygon->emplace_back(intersections[1]);
-                        currentPolygon->emplace_back(intersections[0]);
-                    }
-
+                    currentPolygon->emplace_back(intersections[0]);
+                    currentPolygon->emplace_back(intersections[1]);
                     allContours.emplace_back( *currentPolygon );
                 }
             }

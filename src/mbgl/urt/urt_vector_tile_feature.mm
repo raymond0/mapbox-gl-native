@@ -114,7 +114,7 @@ vector<UrtVectorTileFeature::CoordRange> UrtVectorTileFeature::RelevantCoordinat
     {
         if ( [region containsCoord:coords[0]] )
         {
-            validRanges.emplace_back(CoordRange(0,1));
+            validRanges.emplace_back(CoordRange(0,1,CoordRange::Internal));
         }
         return validRanges;
     }
@@ -125,7 +125,7 @@ vector<UrtVectorTileFeature::CoordRange> UrtVectorTileFeature::RelevantCoordinat
     
     for ( NSInteger i = 1; i < nrCoords; i++ )
     {
-        if (  [region containsOrIntersetsFrom:coords[i-1] to:coords[i]] )
+        if (  [region containsCoord:coords[i-1]] || [region containsCoord:coords[i]] )
         {
             if ( currentlyValid )
             {
@@ -142,16 +142,20 @@ vector<UrtVectorTileFeature::CoordRange> UrtVectorTileFeature::RelevantCoordinat
         {
             if ( currentlyValid )
             {
-                validRanges.emplace_back(CoordRange(segmentStart, segmentEnd - segmentStart + 1));
+                validRanges.emplace_back(CoordRange(segmentStart, segmentEnd - segmentStart + 1, CoordRange::Internal));
                 
                 currentlyValid = false;
+            }
+            else if ( [region intersectsLineFrom:coords[i-1] to:coords[i]] )
+            {
+                validRanges.emplace_back(CoordRange(i-1, 2, CoordRange::Intersection));
             }
         }
     }
     
     if ( currentlyValid )
     {
-        validRanges.emplace_back(CoordRange(segmentStart, segmentEnd - segmentStart + 1));
+        validRanges.emplace_back(CoordRange(segmentStart, segmentEnd - segmentStart + 1, CoordRange::Internal));
         
         currentlyValid = false;
     }
@@ -198,6 +202,13 @@ GeometryCoordinates UrtVectorTileFeature::ConvertToMapboxCoordinates( const vect
 
 GeometryCoordinates UrtVectorTileFeature::GetMapboxCoordinatesInRange( MapItem *item, CoordRange coordRange ) const
 {
+    GeometryCoordinates output;
+
+    if ( coordRange.rangeType == CoordRange::Empty )
+    {
+        return output;
+    }
+    
     Coordinate *origin = region.minimum;
     static const double extent = util::EXTENT;
     const double latExtent = region.height;
@@ -207,17 +218,69 @@ GeometryCoordinates UrtVectorTileFeature::GetMapboxCoordinatesInRange( MapItem *
     const double lonMultiplier = extent / lonExtent;
     
     coord *coords;
-    __unused unsigned int nrCoords = (unsigned int) [item lengthOfCoordinatesWithData:&coords];
+    __unused NSInteger nrCoords = [item lengthOfCoordinatesWithData:&coords];
     
-    GeometryCoordinates output;
+    assert( coordRange.index + coordRange.length <= nrCoords );
     
-    for ( uint32_t i = 0; i < coordRange.second; i++ )
+    //
+    //  Handle intersection case
+    //
+    if ( coordRange.rangeType == CoordRange::Intersection )
     {
-        assert( coordRange.first + i < nrCoords );
-        coord localCoord = [origin localCoordinateFrom:coords[ coordRange.first + i ]];
+        assert( coordRange.length == 2 );
+        coord firstGlobalCoord = coords[ coordRange.index ];
+        coord secondGlobalCoord = coords[ coordRange.index + 1 ];
+        struct rayclipper::rect rect;
+        rect.l = region.minimum.coord;
+        rect.h = region.maximum.coord;
+        rect.l.x -= 10;
+        rect.l.y -= 10;     // Decent overlap so corners are not rounded off
+        rect.h.x += 10;     // too soon.
+        rect.h.y += 10;
+        
+        auto intersections = rayclipper::LineClippedToRect(firstGlobalCoord, secondGlobalCoord, rect);
+        assert( intersections.size() == 2 );
+        coord firstLocal = [origin localCoordinateFrom:intersections[0]];
+        coord secondLocal = [origin localCoordinateFrom:intersections[1]];
+        
+        double firstTileX = ((double) firstLocal.x ) * lonMultiplier;
+        double firstTileY = ((double) firstLocal.y ) * latMultiplier;
+        output.emplace_back( GeometryCoordinate( firstTileX, extent - firstTileY ) );
+        
+        double secondTileX = ((double) secondLocal.x ) * lonMultiplier;
+        double secondTileY = ((double) secondLocal.y ) * latMultiplier;
+        output.emplace_back( GeometryCoordinate ( secondTileX, extent - secondTileY ) );
+
+        return output;
+    }
+    
+    //
+    //  Points inside, first and last might not be
+    //
+    assert( coordRange.rangeType == CoordRange::Internal );
+    for ( NSInteger i = 0; i < coordRange.length; i++ )
+    {
+        assert( coordRange.index + i < nrCoords );
+        coord localCoord = [origin localCoordinateFrom:coords[ coordRange.index + i ]];
         
         double tileX = ((double) localCoord.x ) * lonMultiplier;
         double tileY = ((double) localCoord.y ) * latMultiplier;
+        
+        while ( tileX <= -extent || tileX >= (extent * 2.0) || tileY <= -extent || tileY >= (extent * 2.0) )
+        {
+            assert( coordRange.length > 1 );
+            assert ( i == 0 || i == coordRange.length - 1 );
+            NSInteger adjacentIndex = i == 0 ? 1 : coordRange.length - 2;
+            coord adjacentCoord = [origin localCoordinateFrom:coords[ coordRange.index + adjacentIndex ]];
+
+            double adjacentTileX = ((double) adjacentCoord.x ) * lonMultiplier;
+            double adjacentTileY = ((double) adjacentCoord.y ) * latMultiplier;
+            
+            assert( 0 <= adjacentTileX && adjacentTileX <= extent && 0 <= adjacentTileY && adjacentTileY <= extent );
+            
+            tileX = ( tileX + adjacentTileX ) / 2.0;
+            tileY = ( tileY + adjacentTileY ) / 2.0;
+        }
         
         GeometryCoordinate outputCoord( tileX, extent - tileY );
         
@@ -341,6 +404,7 @@ GeometryCollection UrtVectorTileFeature::getGeometries() const
     //
     //  Should handle everything except roads
     //
+    
     /*if ( mapItem.polygonHoles.count > 0 )
     {
         rayclipper::rect rect = {region.minimum.coord, region.maximum.coord};
@@ -353,27 +417,44 @@ GeometryCollection UrtVectorTileFeature::getGeometries() const
     //  we need to clip those too. We also need to assign each hole to a polygon such that all
     //  polygons are followed by their reversed holes.
     //
-    if ( mapItem.itemType >= type_area && fromProxyTile )
+    if ( mapItem.itemType >= type_area )
     {
-        GeometryCollection outerPolygons = ClippedPolygonInLocalCoords(mapItem);
-        return outerPolygons;
+        if (  fromProxyTile )
+        {
+            GeometryCollection outerPolygons = ClippedPolygonInLocalCoords(mapItem);
+            return outerPolygons;
+        }
+        else
+        {
+            //
+            //  Simple case - 1 item, 0 or more holes (in case of a polygon). All holes belong to main item.
+            //
+            GeometryCollection lines;
+            NSInteger nrCoords = [mapItem lengthOfCoordinatesWithData:nil];
+            auto allUnclippedCoords = GetMapboxCoordinatesInRange( mapItem, CoordRange( 0, nrCoords, CoordRange::Internal ) );
+            
+            lines.emplace_back( allUnclippedCoords );
+            
+            for ( MapItem *hole in mapItem.polygonHoles )
+            {
+                NSInteger nrCoordsHole = [hole lengthOfCoordinatesWithData:nil];
+                auto allUnclippedCoordsHole = GetMapboxCoordinatesInRange( hole, CoordRange( 0, nrCoordsHole, CoordRange::Internal ) );
+                std::reverse(allUnclippedCoordsHole.begin(), allUnclippedCoordsHole.end());
+                lines.emplace_back( allUnclippedCoordsHole );
+            }
+
+            return lines;
+        }
     }
     
-    //
-    //  Simple case - 1 item, 0 or more holes (in case of a polygon). All holes belong to main item.
-    //
+    
+    auto coordinateRanges = RelevantCoordinateRangesInTileRect( mapItem );
+    
     GeometryCollection lines;
-    NSInteger nrCoords = [mapItem lengthOfCoordinatesWithData:nil];
-    auto allUnclippedCoords = GetMapboxCoordinatesInRange( mapItem, CoordRange( 0, nrCoords ) );
-    
-    lines.emplace_back( allUnclippedCoords );
-    
-    for ( MapItem *hole in mapItem.polygonHoles )
+    for ( auto range : coordinateRanges )
     {
-        NSInteger nrCoordsHole = [hole lengthOfCoordinatesWithData:nil];
-        auto allUnclippedCoordsHole = GetMapboxCoordinatesInRange( hole, CoordRange( 0, nrCoordsHole ) );
-        std::reverse(allUnclippedCoordsHole.begin(), allUnclippedCoordsHole.end());
-        lines.emplace_back( allUnclippedCoordsHole );
+        auto coords = GetMapboxCoordinatesInRange( mapItem, range );
+        lines.emplace_back( coords );
     }
     
     return lines;
