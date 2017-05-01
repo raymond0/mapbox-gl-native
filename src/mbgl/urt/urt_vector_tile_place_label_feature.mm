@@ -11,17 +11,33 @@
 namespace mbgl {
     
     
-UrtVectorTilePlaceLabelFeature::UrtVectorTilePlaceLabelFeature( MapItem *mapItem_, Region *region_, bool fromProxyTile_ )
-    : mbgl::UrtVectorTileFeature(mapItem_, region_, fromProxyTile_)
+UrtVectorTilePlaceLabelFeature::UrtVectorTilePlaceLabelFeature( unsigned int itemType_, URRegion region_, bool fromProxyTile_ )
+    : UrtVectorTileFeature(itemType_, region_, fromProxyTile_)
 {
     
 }
 
     
+void UrtVectorTilePlaceLabelFeature::addMapItem( MapItem *mapItem )
+{
+    NSString *townLabelStr = [[mapItem attributeOfType: attr_town_name] stringForAttribute];
+    const char *townLabel = townLabelStr.UTF8String;
+    
+    if ( townLabel != nil )
+    {
+        townLabelString = townLabel;
+    }
+
+    geometryCollection = getGeometriesForMapItem(mapItem);
+}
+
+
+    
 unique_ptr<GeometryTileFeature> UrtVectorTilePlaceLabelFeature::clone()
 {
-    auto other = make_unique<UrtVectorTilePlaceLabelFeature>(mapItem, region, fromProxyTile);
+    auto other = unique_ptr<UrtVectorTilePlaceLabelFeature>(new UrtVectorTilePlaceLabelFeature(itemType, region, fromProxyTile));
     other->properties = GetMapboxTags();
+    other->geometryCollection = geometryCollection;
     return move(other);
 }
     
@@ -30,7 +46,7 @@ UrtVectorTileFeature::MapboxTagsPtr UrtVectorTilePlaceLabelFeature::GetMapboxTag
 {
     auto labelType = [=]() -> string
     {
-        switch ( mapItem.itemType )
+        switch ( itemType )
         {
             case type_place_city:
                 return "city";
@@ -65,13 +81,10 @@ UrtVectorTileFeature::MapboxTagsPtr UrtVectorTilePlaceLabelFeature::GetMapboxTag
         mapboxTags->insert({"type", (string) labelType});
     }
     
-    NSString *townLabelStr = [[mapItem attributeOfType: attr_town_name] stringForAttribute];
-    const char *townLabel = townLabelStr.UTF8String;
-    
-    if ( townLabel != NULL )
+    if ( townLabelString.length() > 0 )
     {
-        mapboxTags->insert({"name", (string) townLabel});
-        mapboxTags->insert({"name_en", (string) townLabel});
+        mapboxTags->insert({"name", townLabelString});
+        mapboxTags->insert({"name_en", townLabelString});
     }
     
     //mapboxTags.emplace_back("ldir", (string) "N");

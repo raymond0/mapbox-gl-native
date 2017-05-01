@@ -16,7 +16,8 @@ namespace mbgl {
 
 void UrtTileLayer::addMapItem( MapItem *mapItem, bool fromProxyTile )
 {
-    auto feature = make_unique<UrtVectorTileFeature>(mapItem, region, fromProxyTile);
+    auto feature = make_unique<UrtVectorTileFeature>(mapItem.itemType, region, fromProxyTile);
+    feature->addMapItem(mapItem);
     features.emplace_back( move(feature) );
 }
 
@@ -51,9 +52,10 @@ void UrtTileLayer::finalizeInternalItems()
     
 void UrtRoadLabelTileLayer::addMapItem( MapItem *mapItem, bool fromProxyTile )
 {
-    auto feature = make_unique<UrtVectorTileRoadLabelFeature>(mapItem, region, fromProxyTile);
+    auto feature = make_unique<UrtVectorTileRoadLabelFeature>(mapItem.itemType, region, fromProxyTile);
+    feature->addMapItem(mapItem);
     
-    if ( feature->shouldRender() )
+    if ( feature->shouldRender(mapItem) )
     {
         features.emplace_back( move(feature) );
     }
@@ -62,14 +64,16 @@ void UrtRoadLabelTileLayer::addMapItem( MapItem *mapItem, bool fromProxyTile )
     
 void UrtRoadTileLayer::addMapItem( MapItem *mapItem, bool fromProxyTile )
 {
-    auto feature = make_unique<UrtVectorTileRoadFeature>(mapItem, region, fromProxyTile);
+    auto feature = make_unique<UrtVectorTileRoadFeature>(mapItem.itemType, region, fromProxyTile);
+    feature->addMapItem(mapItem);
     features.emplace_back( move(feature) );
 }
 
     
 void UrtPlaceTileLayer::addMapItem( MapItem *mapItem, bool fromProxyTile )
 {
-    auto feature = make_unique<UrtVectorTilePlaceLabelFeature>(mapItem, region, fromProxyTile);
+    auto feature = make_unique<UrtVectorTilePlaceLabelFeature>(mapItem.itemType, region, fromProxyTile);
+    feature->addMapItem(mapItem);
     features.emplace_back( move(feature) );
 }
 

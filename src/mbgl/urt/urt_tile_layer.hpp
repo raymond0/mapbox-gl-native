@@ -12,6 +12,7 @@
 #include <string>
 #include <UrtFile/UrtFile.h>
 #include "urt_vector_tile_feature.hpp"
+#include "urt_region.hpp"
 
 namespace mbgl {
     
@@ -20,7 +21,8 @@ using namespace std;
 class UrtTileLayer : public GeometryTileLayer
 {
 public:
-    UrtTileLayer( string name_, Region *region_ ) { name = name_; region = region_; }
+    UrtTileLayer( string name_, URRegion region_ ) { name = name_; region = region_; }
+    virtual ~UrtTileLayer() = default;
     virtual void addMapItem( MapItem *mapItem, bool fromProxyTile );
     virtual void finalizeInternalItems();     // No more items to add
     
@@ -30,7 +32,7 @@ public:
     
     void setWholeGroundType( item_type groundType );
 protected:
-    Region *region;
+    URRegion region;
     string name;
     vector<unique_ptr<UrtVectorTileFeature> > features;
     item_type groundType;
@@ -40,7 +42,7 @@ protected:
 class UrtRoadLabelTileLayer : public UrtTileLayer
 {
 public:
-    UrtRoadLabelTileLayer( string name_, Region *region_ ) : UrtTileLayer ( name_, region_ ) {}
+    UrtRoadLabelTileLayer( string name_, URRegion region_ ) : UrtTileLayer ( name_, region_ ) {}
     virtual void addMapItem( MapItem *mapItem, bool fromProxyTile );
 };
 
@@ -48,7 +50,7 @@ public:
 class UrtRoadTileLayer : public UrtTileLayer
 {
 public:
-    UrtRoadTileLayer( string name_, Region *region_ ) : UrtTileLayer ( name_, region_ ) {}
+    UrtRoadTileLayer( string name_, URRegion region_ ) : UrtTileLayer ( name_, region_ ) {}
     virtual void addMapItem( MapItem *mapItem, bool fromProxyTile );
 };
 
@@ -56,7 +58,7 @@ public:
 class UrtPlaceTileLayer : public UrtTileLayer
 {
 public:
-    UrtPlaceTileLayer( string name_, Region *region_ ) : UrtTileLayer ( name_, region_ ) {}
+    UrtPlaceTileLayer( string name_, URRegion region_ ) : UrtTileLayer ( name_, region_ ) {}
     virtual void addMapItem( MapItem *mapItem, bool fromProxyTile );
 };
     

@@ -18,14 +18,10 @@ using namespace std;
 class WaterTileLayer : public UrtTileLayer
 {
 public:
-    WaterTileLayer( string name_, Region *region_ ) : UrtTileLayer( name_, region_) { groundType = type_none; }
-    virtual void addMapItem( MapItem *mapItem, bool fromProxyTile );
-    virtual void finalizeInternalItems();
+    WaterTileLayer( string name_, URRegion region_ ) : UrtTileLayer( name_, region_) { groundType = type_none; }
     
     void setWholeGroundType( item_type groundType );
 private:
-    vector<pair<MapItem *, bool> > landFeatures;
-    vector<pair<MapItem *, bool> > waterFeatures;
 };
 
     

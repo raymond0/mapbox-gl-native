@@ -154,27 +154,32 @@ std::unique_ptr<AsyncRequest> URTFileSource::Impl::request(const Resource& resou
     
 std::unique_ptr<AsyncRequest> URTFileSource::Impl::TileRequest(const Resource& resource, Callback callback)
 {
-    NSString *urlStr = @(resource.url.c_str());
-    NSString *urTileName = VectorToUrTileName(urlStr);
-    
-    assert ( urTileName != nil );
-    
-    auto request = std::make_unique<URTRequest>(callback);
-    auto shared = request->shared; // Explicit copy so that it also gets copied into the completion handler block below.
-    
-    [mapManager getTilesOrProxiesNamed:urTileName callingBlock:^( NSArray *maptiles )
+    @autoreleasepool
     {
-        Response response;
+        NSString *urlStr = @(resource.url.c_str());
+        NSString *urTileName = VectorToUrTileName(urlStr);
+        
+        assert ( urTileName != nil );
+        
+        auto request = std::make_unique<URTRequest>(callback);
+        auto shared = request->shared; // Explicit copy so that it also gets copied into the completion handler block below.
+        
+        [mapManager getTilesOrProxiesNamed:urTileName callingBlock:^( NSArray *maptiles )
+        {
+            @autoreleasepool
+            {
+                Response response;
 
-        response.data = std::make_shared<std::string>("Use tileArray parameter");
-        response.urtTile = std::make_shared<UrtTileData>((__bridge_retained void *) maptiles, (__bridge_retained void *) urTileName);
-        shared->notify(response);
-    }];
-
-
-    return std::move(request);
+                response.data = std::make_shared<std::string>("Use tileArray parameter");
+                response.urtTile = std::make_shared<UrtTileData>((__bridge_retained void *) maptiles, (__bridge_retained void *) urTileName);
+                shared->notify(response);
+            }
+        }];
+        
+        return std::move(request);
+    }
 }
-    
+
     
 NSString *MapboxUrlStringToFilename( NSString *urlString )
 {

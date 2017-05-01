@@ -23,8 +23,10 @@ public:
                   std::string sourceID_,
                   const style::UpdateParameters& parameters,
                   const Tileset& tileset);
+    
+    ~UrtVectorTile() = default;
 
-    virtual void setNecessity(Necessity);
+    virtual void setNecessity(Necessity) override;
     virtual void setData(std::shared_ptr<const std::string> data,
                  optional<Timestamp> modified,
                  optional<Timestamp> expires,

@@ -11,8 +11,8 @@
 
 namespace mbgl {
     
-UrtVectorTileWholeAreaFeature::UrtVectorTileWholeAreaFeature( Region *region_, item_type _itemType )
-: mbgl::UrtVectorTileFeature( NULL, region_, false ), itemType(_itemType)
+UrtVectorTileWholeAreaFeature::UrtVectorTileWholeAreaFeature( URRegion region_, item_type _itemType )
+: mbgl::UrtVectorTileFeature( 0, region_, false ), itemType(_itemType)
 {
 
 }
@@ -22,6 +22,7 @@ unique_ptr<GeometryTileFeature> UrtVectorTileWholeAreaFeature::clone()
 {
     auto other = make_unique<UrtVectorTileWholeAreaFeature>( region, itemType );
     other->properties = GetMapboxTags();
+    other->geometryCollection = geometryCollection;
     return move(other);
 }
     

@@ -19,7 +19,7 @@ UrtVectorTileFeature::MapboxTagsPtr UrtVectorTileFeature::GetMapboxTags() const
 {
     auto classAndType = [=]() -> pair<string, string>
     {
-        switch ( mapItem.itemType )
+        switch ( itemType )
         {
             case type_poly_wood:
             case type_poly_park:
@@ -51,28 +51,40 @@ UrtVectorTileFeature::MapboxTagsPtr UrtVectorTileFeature::GetMapboxTags() const
     
     return mapboxTags;
 }
-
-
-UrtVectorTileFeature::UrtVectorTileFeature(MapItem *mapItem_, Region *region_, bool fromProxyTile_)
+    
+    
+UrtVectorTileFeature::UrtVectorTileFeature( unsigned int itemType_, URRegion region_, bool fromProxyTile_ )
 {
-    properties = nullptr;
-    mapItem = mapItem_;
+    itemType = itemType_;
     region = region_;
     fromProxyTile = fromProxyTile_;
 }
+    
+    
+void UrtVectorTileFeature::addMapItem( MapItem *mapItem )
+{
+    geometryCollection = getGeometriesForMapItem(mapItem);
+}
 
+    
+UrtVectorTileFeature::~UrtVectorTileFeature()
+{
+
+}
+    
 
 unique_ptr<GeometryTileFeature> UrtVectorTileFeature::clone()
 {
-    auto other = make_unique<UrtVectorTileFeature>(mapItem, region, fromProxyTile);
+    auto other = unique_ptr<UrtVectorTileFeature>(new UrtVectorTileFeature(itemType, region, fromProxyTile));
     other->properties = GetMapboxTags();
+    other->geometryCollection = geometryCollection;
     return move(other);
 }
 
 
 FeatureType UrtVectorTileFeature::getType() const
 {
-    assert ( mapItem.itemType >= type_area );
+    assert ( itemType >= type_area );
     return FeatureType::Polygon;
 }
 
@@ -112,7 +124,7 @@ vector<UrtVectorTileFeature::CoordRange> UrtVectorTileFeature::RelevantCoordinat
     
     if ( nrCoords == 1 )
     {
-        if ( [region containsCoord:coords[0]] )
+        if ( URRegionContainsCoord(region, coords[0]) )
         {
             validRanges.emplace_back(CoordRange(0,1,CoordRange::Internal));
         }
@@ -125,7 +137,7 @@ vector<UrtVectorTileFeature::CoordRange> UrtVectorTileFeature::RelevantCoordinat
     
     for ( NSInteger i = 1; i < nrCoords; i++ )
     {
-        if (  [region containsCoord:coords[i-1]] || [region containsCoord:coords[i]] )
+        if (  URRegionContainsCoord( region, coords[i-1] ) || URRegionContainsCoord( region, coords[i] ) )
         {
             if ( currentlyValid )
             {
@@ -146,7 +158,7 @@ vector<UrtVectorTileFeature::CoordRange> UrtVectorTileFeature::RelevantCoordinat
                 
                 currentlyValid = false;
             }
-            else if ( [region intersectsLineFrom:coords[i-1] to:coords[i]] )
+            else if ( URRegionIntersectsLine( region, coords[i-1], coords[i] ) )
             {
                 validRanges.emplace_back(CoordRange(i-1, 2, CoordRange::Intersection));
             }
@@ -166,10 +178,9 @@ vector<UrtVectorTileFeature::CoordRange> UrtVectorTileFeature::RelevantCoordinat
 
 GeometryCoordinates UrtVectorTileFeature::ConvertToMapboxCoordinates( const vector<coord> &globalCoords ) const
 {
-    Coordinate *origin = region.minimum;
     static const double extent = util::EXTENT;
-    const double latExtent = region.height;
-    const double lonExtent = region.width;
+    const double latExtent = region.maximum.y - region.minimum.y;
+    const double lonExtent = region.maximum.x - region.minimum.x;
     
     const double latMultiplier = extent / latExtent;
     const double lonMultiplier = extent / lonExtent;
@@ -178,7 +189,7 @@ GeometryCoordinates UrtVectorTileFeature::ConvertToMapboxCoordinates( const vect
     
     for ( const auto &coord : globalCoords )
     {
-        struct coord localCoord = [origin localCoordinateFrom:coord];
+        struct coord localCoord = LocalCoordWithOrigin( coord, region.minimum );
         
         double tileX = ((double) localCoord.x ) * lonMultiplier;
         double tileY = ((double) localCoord.y ) * latMultiplier;
@@ -209,10 +220,9 @@ GeometryCoordinates UrtVectorTileFeature::GetMapboxCoordinatesInRange( MapItem *
         return output;
     }
     
-    Coordinate *origin = region.minimum;
     static const double extent = util::EXTENT;
-    const double latExtent = region.height;
-    const double lonExtent = region.width;
+    const double latExtent = region.maximum.y - region.minimum.y;
+    const double lonExtent = region.maximum.x - region.minimum.x;
     
     const double latMultiplier = extent / latExtent;
     const double lonMultiplier = extent / lonExtent;
@@ -231,8 +241,8 @@ GeometryCoordinates UrtVectorTileFeature::GetMapboxCoordinatesInRange( MapItem *
         coord firstGlobalCoord = coords[ coordRange.index ];
         coord secondGlobalCoord = coords[ coordRange.index + 1 ];
         struct rayclipper::rect rect;
-        rect.l = region.minimum.coord;
-        rect.h = region.maximum.coord;
+        rect.l = region.minimum;
+        rect.h = region.maximum;
         rect.l.x -= 10;
         rect.l.y -= 10;     // Decent overlap so corners are not rounded off
         rect.h.x += 10;     // too soon.
@@ -240,8 +250,8 @@ GeometryCoordinates UrtVectorTileFeature::GetMapboxCoordinatesInRange( MapItem *
         
         auto intersections = rayclipper::LineClippedToRect(firstGlobalCoord, secondGlobalCoord, rect);
         assert( intersections.size() == 2 );
-        coord firstLocal = [origin localCoordinateFrom:intersections[0]];
-        coord secondLocal = [origin localCoordinateFrom:intersections[1]];
+        coord firstLocal = LocalCoordWithOrigin( intersections[0], region.minimum );
+        coord secondLocal = LocalCoordWithOrigin( intersections[1], region.minimum );
         
         double firstTileX = ((double) firstLocal.x ) * lonMultiplier;
         double firstTileY = ((double) firstLocal.y ) * latMultiplier;
@@ -261,7 +271,7 @@ GeometryCoordinates UrtVectorTileFeature::GetMapboxCoordinatesInRange( MapItem *
     for ( NSInteger i = 0; i < coordRange.length; i++ )
     {
         assert( coordRange.index + i < nrCoords );
-        coord localCoord = [origin localCoordinateFrom:coords[ coordRange.index + i ]];
+        coord localCoord = LocalCoordWithOrigin( coords[ coordRange.index + i ], region.minimum );
         
         double tileX = ((double) localCoord.x ) * lonMultiplier;
         double tileY = ((double) localCoord.y ) * latMultiplier;
@@ -271,7 +281,7 @@ GeometryCoordinates UrtVectorTileFeature::GetMapboxCoordinatesInRange( MapItem *
             assert( coordRange.length > 1 );
             assert ( i == 0 || i == coordRange.length - 1 );
             NSInteger adjacentIndex = i == 0 ? 1 : coordRange.length - 2;
-            coord adjacentCoord = [origin localCoordinateFrom:coords[ coordRange.index + adjacentIndex ]];
+            coord adjacentCoord = LocalCoordWithOrigin( coords[ coordRange.index + adjacentIndex ], region.minimum );
 
             double adjacentTileX = ((double) adjacentCoord.x ) * lonMultiplier;
             double adjacentTileY = ((double) adjacentCoord.y ) * latMultiplier;
@@ -313,7 +323,7 @@ GeometryCollection UrtVectorTileFeature::ClippedPolygonInLocalCoords( MapItem *i
         inputPolygon[i] = coords[i];
     }
     
-    for ( MapItem *hole in mapItem.polygonHoles )
+    for ( MapItem *hole in item.polygonHoles )
     {
         coord *holeCoords = nil;
         NSInteger nrHoleCoords = [hole lengthOfCoordinatesWithData:&holeCoords];
@@ -329,7 +339,7 @@ GeometryCollection UrtVectorTileFeature::ClippedPolygonInLocalCoords( MapItem *i
         inputPolygon.holes.emplace_back( polygonHole );
     }
     
-    rayclipper::rect rect = {region.minimum.coord, region.maximum.coord};
+    rayclipper::rect rect = {region.minimum, region.maximum};
     vector<rayclipper::Polygon> outputPolygons;
     RayClipPolygon( inputPolygon, rect, outputPolygons );
     
@@ -400,6 +410,12 @@ void WriteMapItem( rayclipper::rect rect, MapItem *mapItem )
 
 
 GeometryCollection UrtVectorTileFeature::getGeometries() const
+{
+    return geometryCollection;
+}
+
+
+GeometryCollection UrtVectorTileFeature::getGeometriesForMapItem(MapItem *mapItem) const
 {
     //
     //  Should handle everything except roads

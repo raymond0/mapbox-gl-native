@@ -111,7 +111,8 @@ void UrtVectorTile::setNecessity(Necessity necessity) {
 class UrtVectorTileData : public GeometryTileData {
 public:
     UrtVectorTileData(std::shared_ptr<UrtTileData> data);
-    
+    virtual ~UrtVectorTileData() = default;
+
     std::unique_ptr<GeometryTileData> clone() const override {
         return std::make_unique<UrtVectorTileData>(*this);
     }
@@ -126,6 +127,7 @@ private:
     std::shared_ptr< LayersType > layers;
     void parse() const;
     void addMapTile( MapTile *mapTile, bool wasProxyTile, bool shouldRenderOceans, NSInteger tileLevel ) const;
+    void addMapItem( MapItem *mapItem, LayerType layer, bool fromProxyTile ) const;
     bool shouldIncludeItemType( unsigned int itemType, NSInteger tileLevel ) const;
     item_type wholeTileGroundType;
 };
@@ -135,7 +137,7 @@ UrtVectorTileData::UrtVectorTileData(std::shared_ptr<UrtTileData> data_)
 : data(std::move(data_))
 {
     NSString *tilename = ( __bridge NSString * ) data->tilenameNSString();
-    Region *region = [[Region alloc] initForTileName:tilename];
+    URRegion region = URRegionForTileName( tilename.UTF8String );
     
     layers = shared_ptr< LayersType >( new LayersType() );
     
@@ -161,7 +163,11 @@ const GeometryTileLayer* UrtVectorTileData::getLayer(const std::string& name) co
         //NSString *tilename = ( __bridge NSString * ) data->tilenameNSString();
         //printf( "Parsing tile %s\n", tilename.UTF8String );
         
-        parse();
+        @autoreleasepool
+        {
+            parse();
+        }
+        //data = nullptr;
         
         //printf( "Finished parsing tile %s\n", tilename.UTF8String );
     }
@@ -229,12 +235,29 @@ bool UrtVectorTileData::shouldIncludeItemType( unsigned int itemType, NSInteger 
 
     return true;
 }
-
     
+
+void UrtVectorTileData::addMapItem( MapItem *mapItem, LayerType layer, bool fromProxyTile) const
+{
+    if ( mapItem == nil )
+    {
+        return;
+    }
+    
+    layers->at(layer)->addMapItem( mapItem, fromProxyTile );
+    
+    if ( layer == LayerRoad )
+    {
+        layers->at(LayerRoadLabel)->addMapItem( mapItem, fromProxyTile );
+    }
+}
+    
+
 void UrtVectorTileData::addMapTile( MapTile *mapTile, bool fromProxyTile, bool shouldRenderOceans, NSInteger tileLevel ) const
 {
     NSEnumerator *mapItemEnumerator = [mapTile mapItemEnumerator];
-    MapItem *lastMapItem = nil;
+    MapItem *currentMapItem = nil;
+    LayerType currentMapItemLayer;
     MapItem *mapItem = nil;
     
     while ( (mapItem = [mapItemEnumerator nextObject]) != nil )
@@ -247,7 +270,11 @@ void UrtVectorTileData::addMapTile( MapTile *mapTile, bool fromProxyTile, bool s
             mapItem = [mapTile resolveUpreferenceForItem:mapItem];
             if ( mapItem == nil )
             {
-                lastMapItem = nil;
+                if ( currentMapItem != nil )
+                {
+                    addMapItem( currentMapItem, currentMapItemLayer, fromProxyTile );
+                    currentMapItem = nil;
+                }
                 continue;
             }
             wasParentRef = YES;
@@ -256,7 +283,11 @@ void UrtVectorTileData::addMapTile( MapTile *mapTile, bool fromProxyTile, bool s
         
         if ( ! shouldIncludeItemType( mapItem.itemType, tileLevel ) )
         {
-            lastMapItem = nil;
+            if ( currentMapItem != nil )
+            {
+                addMapItem( currentMapItem, currentMapItemLayer, fromProxyTile );
+                currentMapItem = nil;
+            }
             continue;
         }
         
@@ -264,14 +295,18 @@ void UrtVectorTileData::addMapTile( MapTile *mapTile, bool fromProxyTile, bool s
         {
             if ( ! shouldRenderOceans )
             {
-                lastMapItem = nil;
+                if ( currentMapItem != nil )
+                {
+                    addMapItem( currentMapItem, currentMapItemLayer, fromProxyTile );
+                    currentMapItem = nil;
+                }
                 continue;
             }
         }
         
         if ( mapItem.itemType == type_poly_inner_hole )
         {
-            [lastMapItem addPolygonHole:mapItem];
+            [currentMapItem addPolygonHole:mapItem];
             continue;
         }
         
@@ -279,7 +314,11 @@ void UrtVectorTileData::addMapTile( MapTile *mapTile, bool fromProxyTile, bool s
         
         if ( layer == LayerCount )
         {
-            lastMapItem = nil;
+            if ( currentMapItem != nil )
+            {
+                addMapItem( currentMapItem, currentMapItemLayer, fromProxyTile );
+                currentMapItem = nil;
+            }
             continue;
         }
         
@@ -302,14 +341,19 @@ void UrtVectorTileData::addMapTile( MapTile *mapTile, bool fromProxyTile, bool s
             }
         }
 #endif
-        
-        layers->at(layer)->addMapItem( mapItem, fromProxyTile );
-        lastMapItem = mapItem;
-        
-        if ( layer == LayerRoad )
+
+        if ( currentMapItem != nil )
         {
-            layers->at(LayerRoadLabel)->addMapItem( mapItem, fromProxyTile );
+            addMapItem( currentMapItem, currentMapItemLayer, fromProxyTile );
         }
+        
+        currentMapItem = mapItem;
+        currentMapItemLayer = layer;
+    }
+    
+    if ( currentMapItem != nil )
+    {
+        addMapItem( currentMapItem, currentMapItemLayer, fromProxyTile );
     }
     
     item_type tileCover = [mapTile completeGroundType];
@@ -397,12 +441,13 @@ void UrtVectorTile::setData(std::shared_ptr<const std::string>,
 {
     modified = modified_;
     expires = expires_;
-    
     assert( urtTile_ != nullptr );
     
-    auto dataItem = urtTile_ != nullptr ? std::make_unique<UrtVectorTileData>(urtTile_) : nullptr;
-    
-    GeometryTile::setData(std::move(dataItem));
+    @autoreleasepool
+    {
+        auto dataItem = urtTile_ != nullptr ? std::make_unique<UrtVectorTileData>(urtTile_) : nullptr;
+        GeometryTile::setData(std::move(dataItem));
+    }
 }
     
 }

@@ -17,18 +17,14 @@ using namespace std;
 class UrtVectorTileWaterFeature : public UrtVectorTileFeature
 {
 public:
-    UrtVectorTileWaterFeature( Region *region_ );
+    UrtVectorTileWaterFeature( URRegion region_ );
+    virtual void addMapItem( MapItem *mapItem ) override;
     virtual unique_ptr<GeometryTileFeature> clone() override;
     
     void addLandArea( MapItem *landArea, bool fromProxyTile );
-    void addWaterAreas( vector<pair<MapItem *, bool> >::iterator first, vector<pair<MapItem *, bool> >::iterator last );
     
     FeatureType getType() const override;
     GeometryCollection getGeometries() const override;
-    
-private:
-    vector<pair<MapItem *, bool> > landAreas;
-    vector<pair<MapItem *, bool> > waterAreas;
 };
 
 }

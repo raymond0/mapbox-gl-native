@@ -18,14 +18,18 @@ using namespace std;
 class UrtVectorTileRoadFeature : public UrtVectorTileFeature
 {
 public:
-    UrtVectorTileRoadFeature( MapItem *mapItem, Region *region_, bool fromProxyTile_ );
+    UrtVectorTileRoadFeature( unsigned int itemType_, URRegion region_, bool fromProxyTile_ );
+    virtual void addMapItem( MapItem *mapItem ) override;
     virtual unique_ptr<GeometryTileFeature> clone() override;
     
     virtual FeatureType getType() const override;
-    virtual GeometryCollection getGeometries() const override;
 
 protected:
     MapboxTagsPtr GetMapboxTags() const override;
+    virtual GeometryCollection getGeometriesForMapItem( MapItem *mapItem ) const override;
+    GeometryCollection geometries;
+    bool isOneway;
+private:
 };
 
 

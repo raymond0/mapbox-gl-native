@@ -11,17 +11,27 @@
 namespace mbgl {
     
     
-UrtVectorTileRoadFeature::UrtVectorTileRoadFeature( MapItem *mapItem_, Region *region_, bool fromProxyTile_ )
-    : UrtVectorTileFeature(mapItem_, region_, fromProxyTile_ )
+UrtVectorTileRoadFeature::UrtVectorTileRoadFeature( unsigned int itemType_, URRegion region_, bool fromProxyTile_ )
+    : UrtVectorTileFeature(itemType_, region_, fromProxyTile_)
 {
     
 }
     
     
+void UrtVectorTileRoadFeature::addMapItem( MapItem *mapItem )
+{
+    isOneway = [mapItem oneWayType] != TwoWay;
+    geometryCollection = getGeometriesForMapItem(mapItem);
+}
+
+
+    
 unique_ptr<GeometryTileFeature> UrtVectorTileRoadFeature::clone()
 {
-    auto other = make_unique<UrtVectorTileRoadFeature>(mapItem, region, fromProxyTile);
+    auto other = unique_ptr<UrtVectorTileRoadFeature>(new UrtVectorTileRoadFeature(itemType, region, fromProxyTile));
     other->properties = GetMapboxTags();
+    other->geometryCollection = geometryCollection;
+    other->isOneway = isOneway;
     return move(other);
 }
     
@@ -30,7 +40,7 @@ UrtVectorTileRoadFeature::MapboxTagsPtr UrtVectorTileRoadFeature::GetMapboxTags(
 {
     auto roadClassAndType = [=]() -> pair<string, string>
     {
-        switch ( mapItem.itemType )
+        switch ( itemType )
         {
             case type_street_nopass:        // ToDo - verify nopass
             case type_street_0:
@@ -90,7 +100,7 @@ UrtVectorTileRoadFeature::MapboxTagsPtr UrtVectorTileRoadFeature::GetMapboxTags(
         mapboxTags->insert({"type", (string) roadClassAndType.second});
     }
     
-    mapboxTags->insert({"oneway", (string) ( [mapItem oneWayType] != TwoWay ? "true" : "false" )});   // ToDo
+    mapboxTags->insert({"oneway", (string) ( isOneway ? "true" : "false" )});   // ToDo
     mapboxTags->insert({"structure", (string) "none"}); // ToDo
         
     return mapboxTags;
@@ -103,7 +113,7 @@ FeatureType UrtVectorTileRoadFeature::getType() const
 }
     
 
-GeometryCollection UrtVectorTileRoadFeature::getGeometries() const
+GeometryCollection UrtVectorTileRoadFeature::getGeometriesForMapItem( MapItem *mapItem ) const
 {
     auto coordinateRanges = RelevantCoordinateRangesInTileRect( mapItem );
     

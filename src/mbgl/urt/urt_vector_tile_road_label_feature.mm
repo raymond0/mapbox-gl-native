@@ -9,18 +9,38 @@
 #include "urt_vector_tile_road_label_feature.hpp"
 
 namespace mbgl {
+        
     
-UrtVectorTileRoadLabelFeature::UrtVectorTileRoadLabelFeature( MapItem *mapItem_, Region *region_, bool fromProxyTile_ )
-: mbgl::UrtVectorTileFeature(mapItem_, region_, fromProxyTile_)
+UrtVectorTileRoadLabelFeature::UrtVectorTileRoadLabelFeature( unsigned int itemType_, URRegion region_, bool fromProxyTile_ )
+    : UrtVectorTileFeature(itemType_, region_, fromProxyTile_)
 {
     
 }
+    
+    
+void UrtVectorTileRoadLabelFeature::addMapItem( MapItem *mapItem )
+{
+    NSString *renderingString = [mapItem streetRenderingString];
+    if ( renderingString == nil )
+    {
+        return;
+    }
+    
+    roadLabelString = renderingString.UTF8String;
+    longestSectionDistance = distanceOfLongestSection( mapItem );
+    
+    geometryCollection = getGeometriesForMapItem(mapItem);
+}
 
+    
 
 unique_ptr<GeometryTileFeature> UrtVectorTileRoadLabelFeature::clone()
 {
-    auto other = make_unique<UrtVectorTileRoadLabelFeature>(mapItem, region, fromProxyTile);
+    auto other = unique_ptr<UrtVectorTileRoadLabelFeature>( new UrtVectorTileRoadLabelFeature(itemType, region, fromProxyTile) );
     other->properties = GetMapboxTags();
+    other->geometryCollection = geometryCollection;
+    other->roadLabelString = roadLabelString;
+    other->longestSectionDistance = longestSectionDistance;
     return move(other);
 }
 
@@ -39,18 +59,17 @@ UrtVectorTileFeature::MapboxTagsPtr UrtVectorTileRoadLabelFeature::GetMapboxTags
 {
     MapboxTagsPtr mapboxTags ( new MapboxTags );
     
-    NSString *renderingString = [mapItem streetRenderingString];
-    if ( renderingString == nil )
+    if ( roadLabelString.length() == 0 )
     {
         return mapboxTags;
     }
 
     //mapboxTags->insert({"iso_3166_2", (string) "NL-NH"});
-    mapboxTags->insert({"len", (double) distanceOfLongestSection()});
-    mapboxTags->insert({"name", (string) renderingString.UTF8String});
-    mapboxTags->insert({"name_en", (string) renderingString.UTF8String});
+    mapboxTags->insert({"len", longestSectionDistance});
+    mapboxTags->insert({"name", roadLabelString});
+    mapboxTags->insert({"name_en", roadLabelString});
     
-    switch ( mapItem.itemType )
+    switch ( itemType )
     {
         case type_street_nopass:        // ToDo - verify nopass
         case type_street_0:
@@ -121,10 +140,10 @@ FeatureType UrtVectorTileRoadLabelFeature::getType() const
 }
     
     
-GeometryCollection UrtVectorTileRoadLabelFeature::getGeometries() const
+GeometryCollection UrtVectorTileRoadLabelFeature::getGeometriesForMapItem( MapItem *mapItem ) const
 {
     GeometryCollection lines;
-    auto ls = longestSection();
+    auto ls = longestSection( mapItem );
     
     auto coords = GetMapboxCoordinatesInRange( mapItem, ls );
     lines.emplace_back( coords );
@@ -133,19 +152,19 @@ GeometryCollection UrtVectorTileRoadLabelFeature::getGeometries() const
 }
     
     
-double UrtVectorTileRoadLabelFeature::distanceOfLongestSection() const
+double UrtVectorTileRoadLabelFeature::distanceOfLongestSection(MapItem *mapItem) const
 {
-    auto ls = longestSection();
+    auto ls = longestSection( mapItem );
     if ( ls.length == 0 )
     {
         return 0;
     }
     
-    return distanceOfSection(ls);
+    return distanceOfSection(mapItem, ls);
 }
     
     
-UrtVectorTileFeature::CoordRange UrtVectorTileRoadLabelFeature::longestSection() const
+UrtVectorTileFeature::CoordRange UrtVectorTileRoadLabelFeature::longestSection(MapItem *mapItem) const
 {
     auto coordinateRanges = RelevantCoordinateRangesInTileRect( mapItem );
     
@@ -166,7 +185,7 @@ UrtVectorTileFeature::CoordRange UrtVectorTileRoadLabelFeature::longestSection()
             continue;
         }
         
-        double d = distanceOfSection(range);
+        double d = distanceOfSection(mapItem, range);
         if ( d > longestDistance )
         {
             longestDistance = d;
@@ -183,7 +202,7 @@ UrtVectorTileFeature::CoordRange UrtVectorTileRoadLabelFeature::longestSection()
 }
     
     
-double UrtVectorTileRoadLabelFeature::distanceOfSection(UrtVectorTileFeature::CoordRange &section) const
+double UrtVectorTileRoadLabelFeature::distanceOfSection(MapItem *mapItem, UrtVectorTileFeature::CoordRange &section) const
 {
     coord *coords;
     NSInteger nrCoords __unused = [mapItem lengthOfCoordinatesWithData:&coords];
@@ -202,9 +221,14 @@ double UrtVectorTileRoadLabelFeature::distanceOfSection(UrtVectorTileFeature::Co
 }
     
     
-bool UrtVectorTileRoadLabelFeature::shouldRender()
+bool UrtVectorTileRoadLabelFeature::shouldRender( MapItem *mapItem )
 {
-    if ( [mapItem streetRenderingString] == nil )
+    if ( roadLabelString.length() == 0 )
+    {
+        return false;
+    }
+    
+    if ( longestSectionDistance < DBL_EPSILON )
     {
         return false;
     }
@@ -214,28 +238,16 @@ bool UrtVectorTileRoadLabelFeature::shouldRender()
 
     assert( nrCoords > 0 );
     
-    Region *itemRegion;
+    URRegion itemRegion = { coords[0], coords[0] };
     
-    for ( NSInteger i = 0; i < nrCoords; i++ )
+    for ( NSInteger i = 1; i < nrCoords; i++ )
     {
-        Coordinate *c = [[Coordinate alloc] initWithCoord:coords[i]];
-
-        if ( i == 0 )
-        {
-            itemRegion = [[Region alloc] initWithMinimum:c maximum:c];
-        }
-        else
-        {
-            [itemRegion expandWithCoordinate:c];
-        }
+        URRegionExpand( itemRegion, coords[i] );
     }
     
-    if ( ! [region containsCoordinate:itemRegion.centre] )
-    {
-        return false;
-    }
+    coord itemCenter = URRegionCenter(itemRegion);
     
-    if ( distanceOfLongestSection() < DBL_EPSILON )
+    if ( ! URRegionContainsCoord(region, itemCenter) )
     {
         return false;
     }

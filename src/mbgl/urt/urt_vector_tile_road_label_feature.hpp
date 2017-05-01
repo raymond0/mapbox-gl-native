@@ -17,18 +17,21 @@ namespace mbgl
     class UrtVectorTileRoadLabelFeature : public UrtVectorTileFeature
     {
     public:
-        UrtVectorTileRoadLabelFeature( MapItem *mapItem, Region *region_, bool fromProxyTile_ );
+        UrtVectorTileRoadLabelFeature( unsigned int itemType_, URRegion region_, bool fromProxyTile_ );
+        virtual void addMapItem( MapItem *mapItem ) override;
         virtual unique_ptr<GeometryTileFeature> clone() override;
         
         virtual FeatureType getType() const override;
-        virtual GeometryCollection getGeometries() const override;
         
-        bool shouldRender();
+        bool shouldRender( MapItem *mapItem );
     protected:
         virtual MapboxTagsPtr GetMapboxTags() const override;
+        virtual GeometryCollection getGeometriesForMapItem( MapItem *mapItem ) const override;
 
-        UrtVectorTileFeature::CoordRange longestSection() const;
-        double distanceOfSection(UrtVectorTileFeature::CoordRange &section) const;
-        double distanceOfLongestSection() const;
+        UrtVectorTileFeature::CoordRange longestSection(MapItem *mapItem) const;
+        double distanceOfSection(MapItem *mapItem, UrtVectorTileFeature::CoordRange &section) const;
+        double distanceOfLongestSection(MapItem *mapItem) const;
+        std::string roadLabelString;
+        double longestSectionDistance;
     };
 }

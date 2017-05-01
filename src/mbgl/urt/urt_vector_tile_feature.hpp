@@ -13,6 +13,7 @@
 #include <mbgl/tile/geometry_tile_data.hpp>
 #include <UrtFile/UrtFile.h>
 #include <memory>
+#include "urt_region.hpp"
 
 namespace mbgl
 {
@@ -20,7 +21,9 @@ namespace mbgl
     
     class UrtVectorTileFeature : public GeometryTileFeature {
     public:
-        UrtVectorTileFeature( MapItem *mapItem, Region *region_, bool fromProxyTile_ );
+        UrtVectorTileFeature( unsigned int itemType_, URRegion region_, bool fromProxyTile_ );
+        virtual void addMapItem( MapItem *mapItem );
+        virtual ~UrtVectorTileFeature();
         virtual unique_ptr<GeometryTileFeature> clone();
         
         virtual FeatureType getType() const override;
@@ -30,6 +33,7 @@ namespace mbgl
         virtual GeometryCollection getGeometries() const override;
         
     protected:
+        virtual GeometryCollection getGeometriesForMapItem(MapItem *mapItem) const;
         typedef unordered_map<string,Value> MapboxTags;
         typedef shared_ptr<MapboxTags> MapboxTagsPtr;
         virtual MapboxTagsPtr GetMapboxTags() const;    // To override in subclasses
@@ -55,14 +59,15 @@ namespace mbgl
             }
         } CoordRange;
 
-        Region *region;
+        URRegion region;
         bool fromProxyTile;
         MapboxTagsPtr properties;
+        GeometryCollection geometryCollection;
         vector<CoordRange> RelevantCoordinateRangesInTileRect( MapItem *item ) const;
         GeometryCoordinates ConvertToMapboxCoordinates( const vector<coord> &globalCoords ) const;
         GeometryCoordinates GetMapboxCoordinatesInRange( MapItem *item, CoordRange coordRange ) const;
         GeometryCollection ClippedPolygonInLocalCoords( MapItem *item ) const;
-        MapItem *mapItem;
+        unsigned int itemType;
     private:
         int PointInPolygon( const GeometryCoordinates &polygon, const GeometryCoordinate &coordinate ) const;
         void AssignHolesToOuterPolygons( const GeometryCollection &outerPolygons, const GeometryCollection &holes,

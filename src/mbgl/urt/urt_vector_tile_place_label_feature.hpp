@@ -18,11 +18,14 @@ namespace mbgl
     class UrtVectorTilePlaceLabelFeature : public UrtVectorTileFeature
     {
     public:
-        UrtVectorTilePlaceLabelFeature( MapItem *mapItem, Region *region_, bool fromProxyTile_ );
+        UrtVectorTilePlaceLabelFeature( unsigned int itemType_, URRegion region_, bool fromProxyTile_ );
+        virtual void addMapItem( MapItem *mapItem ) override;
         virtual unique_ptr<GeometryTileFeature> clone() override;
         
         virtual FeatureType getType() const override;
     protected:
         virtual MapboxTagsPtr GetMapboxTags() const override;
+    private:
+        std::string townLabelString;
     };
 }

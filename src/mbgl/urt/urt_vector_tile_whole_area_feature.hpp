@@ -17,7 +17,7 @@ namespace mbgl {
     class UrtVectorTileWholeAreaFeature : public UrtVectorTileFeature
     {
     public:
-        UrtVectorTileWholeAreaFeature( Region *region_, item_type _itemType );
+        UrtVectorTileWholeAreaFeature( URRegion region_, item_type _itemType );
         virtual unique_ptr<GeometryTileFeature> clone() override;
 
         virtual FeatureType getType() const override;

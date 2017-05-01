@@ -11,31 +11,25 @@
 
 namespace mbgl {
 
-UrtVectorTileWaterFeature::UrtVectorTileWaterFeature( Region *region_ )
-: mbgl::UrtVectorTileFeature( NULL, region_, false )
+UrtVectorTileWaterFeature::UrtVectorTileWaterFeature( URRegion region_ )
+: mbgl::UrtVectorTileFeature( 0, region_, false )
 {
     
 }
+    
+    
+void UrtVectorTileWaterFeature::addMapItem( MapItem *mapItem )
+{
+    geometryCollection = getGeometriesForMapItem(mapItem);
+};
+
 
 
 unique_ptr<GeometryTileFeature> UrtVectorTileWaterFeature::clone()
 {
     auto other = make_unique<UrtVectorTileWaterFeature>( region );
-    other->landAreas = landAreas;
-    other->waterAreas = waterAreas;
+    other->geometryCollection = geometryCollection;
     return move(other);
-}
-
-
-void UrtVectorTileWaterFeature::addLandArea( MapItem *landArea, bool fromProxyTile )
-{
-    landAreas.emplace_back( landArea, fromProxyTile );
-}
-
-
-void UrtVectorTileWaterFeature::addWaterAreas( vector<pair<MapItem *, bool> >::iterator first, vector<pair<MapItem *, bool> >::iterator last )
-{
-    waterAreas.insert( waterAreas.end(), first, last );
 }
 
 
@@ -117,8 +111,6 @@ GeometryCollection UrtVectorTileWaterFeature::getGeometries() const
     // NB - We no longer handle water/land areas like this. Maybe we should still use this method if land
     // is completely contained within the tile though?
     //
-    assert( landAreas.size() == 0 );
-    //if ( landAreas.size() == 0 )
     return lines;
 
 #if 0

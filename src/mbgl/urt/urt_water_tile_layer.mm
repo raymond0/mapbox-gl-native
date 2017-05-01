@@ -10,32 +10,8 @@
 #import "urt_vector_tile_water_feature.hpp"
 
 namespace mbgl {
-    
-void WaterTileLayer::addMapItem( MapItem *mapItem, bool fromProxyTile )
-{
-    if ( mapItem.itemType == type_poly_water || mapItem.itemType == type_poly_ocean )
-    {
-        waterFeatures.emplace_back( mapItem, fromProxyTile );
-    }
-    else if ( mapItem.itemType == type_poly_inner_hole )
-    {
-        assert( waterFeatures.size() > 0 && "Can have a land hole without first having some water" );
-        assert( waterFeatures.back().first.itemType == type_poly_ocean || waterFeatures.back().first.itemType == type_poly_water && "trying to add a water hole to something thats not ocean" );
-        assert( waterFeatures.back().second == fromProxyTile && "Both water item and its hole should have proxy status matching" );
-        [waterFeatures.back().first addPolygonHole:mapItem];
-    }
-    else if ( mapItem.itemType == type_poly_land )
-    {
-        landFeatures.emplace_back( mapItem, fromProxyTile );
-    }
-    else
-    {
-        assert( false && "Can only handle water and land types" );
-    }
-}
 
-
-void WaterTileLayer::finalizeInternalItems()
+/*void WaterTileLayer::finalizeInternalItems()
 {
     //
     //  Ground is anything that's not water (thus "nothing" is water, as is water)
@@ -51,10 +27,13 @@ void WaterTileLayer::finalizeInternalItems()
         return;
     }
     
+    //assert( false );
+    
     //
     //  Whole area is water. Create a special feature that handles this and treats land as holes.
     //
     auto feature = make_unique<UrtVectorTileWaterFeature>(region);
+    features.emplace_back( move(feature) );
     
     for ( auto &landItem : landFeatures )
     {
@@ -63,8 +42,7 @@ void WaterTileLayer::finalizeInternalItems()
     
     feature->addWaterAreas( waterFeatures.begin(), waterFeatures.end() );
     
-    features.emplace_back( move(feature) );
-}
+}*/
 
 
 }
