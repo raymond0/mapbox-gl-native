@@ -380,6 +380,7 @@ void UrtVectorTileData::parse() const
     NSInteger tileLevel = tilename.length;
     
     NSInteger closestNonBlank = NSIntegerMax;
+    NSInteger oceansDistance = NSIntegerMax;
     
     for ( MapTile *mapTile in mapTiles )
     {
@@ -388,42 +389,55 @@ void UrtVectorTileData::parse() const
         {
             closestNonBlank = distanceToNonBlank;
         }
+        if ( mapTile.isPlanetOceanMapTile )
+        {
+            oceansDistance = distanceToNonBlank;
+        }
     }
     
+    bool oceansIsClosest = oceansDistance == closestNonBlank;
     bool haveRenderedOceans = false;
+    NSInteger effectiveOceansLevel = tileLevel - closestNonBlank;
     
     for ( MapTile *mapTile in mapTiles )
     {
-        bool shouldRenderOceans = false;
-        NSInteger distanceToNonBlank = 0;
-        
-        if ( tileLevel <= GLOBAL_OCEAN_END_LEVEL )
+        @autoreleasepool
         {
-            shouldRenderOceans = mapTile.isPlanetOceanMapTile;
-        }
-        else
-        {
-            distanceToNonBlank = mapTile.distanceToNonBlankNode;
-            shouldRenderOceans = !haveRenderedOceans && distanceToNonBlank == closestNonBlank;
-        }
-        
-        //printf( "Using water from tile %s, is planet: %d, isBlank: %d, distance: %ld\n",
-        //        tilename.UTF8String, mapTile.isPlanetOceanMapTile, mapTile.blankNode, (long)distanceToNonBlank );
-        
-        bool blankNode = false;
-        MapTile *tile = mapTile;
-        
-        while ( tile.blankNode && tile != nil )
-        {
-            blankNode = true;
-            tile = tile.parent;
-        }
-        
-        addMapTile( tile, blankNode, shouldRenderOceans, tileLevel );
-        
-        if ( shouldRenderOceans )
-        {
-            haveRenderedOceans = true;
+            bool shouldRenderOceans = false;
+            NSInteger distanceToNonBlank = 0;
+            
+            //
+            //  Level 8, distance 2 -> Ocean file will be the only map with ocean data. If it ties it
+            //  always wins. It always wins <= GLOBAL_OCEAN_END_LEVEL.
+            //
+            if ( effectiveOceansLevel <= GLOBAL_OCEAN_END_LEVEL || oceansIsClosest )
+            {
+                shouldRenderOceans = mapTile.isPlanetOceanMapTile;
+            }
+            else
+            {
+                distanceToNonBlank = mapTile.distanceToNonBlankNode;
+                shouldRenderOceans = !haveRenderedOceans && distanceToNonBlank == closestNonBlank;
+            }
+            
+            //printf( "Using water from tile %s, is planet: %d, isBlank: %d, distance: %ld\n",
+            //        tilename.UTF8String, mapTile.isPlanetOceanMapTile, mapTile.blankNode, (long)distanceToNonBlank );
+            
+            bool blankNode = false;
+            MapTile *tile = mapTile;
+            
+            while ( tile.blankNode && tile != nil )
+            {
+                blankNode = true;
+                tile = tile.parent;
+            }
+            
+            addMapTile( tile, blankNode, shouldRenderOceans, tileLevel );
+            
+            if ( shouldRenderOceans )
+            {
+                haveRenderedOceans = true;
+            }
         }
     }
     
