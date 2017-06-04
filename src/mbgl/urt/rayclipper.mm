@@ -219,7 +219,13 @@ vector<struct coord> LineIntersectionOfRect( const struct coord &p1, const struc
     assert ( intersections[1].y == rect.l.y || intersections[1].y == rect.h.y ||
              intersections[1].x == rect.l.x || intersections[1].x == rect.h.x );
     
-    assert( ! coord_is_equal(intersections[0], intersections[1]) );
+    if ( coord_is_equal(intersections[0], intersections[1]) )
+    {
+        assert( ( intersections[0].x == rect.l.x || intersections[0].x == rect.h.x ) &&
+                ( intersections[0].y == rect.l.y || intersections[0].y == rect.h.y ) );
+
+        return output;
+    }
     
     double d0 = CoordDistance(p1, intersections[0]);
     double d1 = CoordDistance(p1, intersections[1]);
