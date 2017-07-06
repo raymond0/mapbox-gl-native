@@ -398,6 +398,38 @@ set(MBGL_CORE_FILES
     src/mbgl/tile/vector_tile.cpp
     src/mbgl/tile/vector_tile.hpp
 
+    # urt
+    src/mbgl/urt/gzip.cpp
+    src/mbgl/urt/rayclipper.h
+    src/mbgl/urt/rayclipper.mm
+    src/mbgl/urt/urt_auto_file_source.hpp
+    src/mbgl/urt/urt_auto_file_source.mm
+    src/mbgl/urt/urt_file_source.hpp
+    src/mbgl/urt/urt_file_source.mm
+    src/mbgl/urt/urt_region.hpp
+    src/mbgl/urt/urt_region.mm
+    src/mbgl/urt/urt_tile_data.hpp
+    src/mbgl/urt/urt_tile_data.mm
+    src/mbgl/urt/urt_tile_layer.hpp
+    src/mbgl/urt/urt_tile_layer.mm
+    src/mbgl/urt/urt_vector_tile.hpp
+    src/mbgl/urt/urt_vector_tile.mm
+    src/mbgl/urt/urt_vector_tile_feature.hpp
+    src/mbgl/urt/urt_vector_tile_feature.mm
+    src/mbgl/urt/urt_vector_tile_place_label_feature.hpp
+    src/mbgl/urt/urt_vector_tile_place_label_feature.mm
+    src/mbgl/urt/urt_vector_tile_road_feature.hpp
+    src/mbgl/urt/urt_vector_tile_road_feature.mm
+    src/mbgl/urt/urt_vector_tile_road_label_feature.hpp
+    src/mbgl/urt/urt_vector_tile_road_label_feature.mm
+    src/mbgl/urt/urt_vector_tile_water_feature.hpp
+    src/mbgl/urt/urt_vector_tile_water_feature.mm
+    src/mbgl/urt/urt_vector_tile_whole_area_feature.hpp
+    src/mbgl/urt/urt_vector_tile_whole_area_feature.mm
+    src/mbgl/urt/urt_water_tile_layer.hpp
+    src/mbgl/urt/urt_water_tile_layer.mm
+    src/mbgl/urt/zlib.cpp
+
     # util
     include/mbgl/util/async_request.hpp
     include/mbgl/util/char_array_buffer.hpp
@@ -490,28 +522,4 @@ set(MBGL_CORE_FILES
     src/mbgl/util/work_queue.cpp
     src/mbgl/util/work_queue.hpp
     src/mbgl/util/work_request.cpp
-
-    # urt
-    src/mbgl/urt/rayclipper.h
-    src/mbgl/urt/rayclipper.mm
-    src/mbgl/urt/urt_file_source.hpp
-    src/mbgl/urt/urt_file_source.mm
-    src/mbgl/urt/urt_tile_data.hpp
-    src/mbgl/urt/urt_tile_data.mm
-    src/mbgl/urt/urt_tile_layer.hpp
-    src/mbgl/urt/urt_tile_layer.mm
-    src/mbgl/urt/urt_vector_tile.hpp
-    src/mbgl/urt/urt_vector_tile.mm
-    src/mbgl/urt/urt_vector_tile_feature.hpp
-    src/mbgl/urt/urt_vector_tile_feature.mm
-    src/mbgl/urt/urt_vector_tile_place_label_feature.hpp
-    src/mbgl/urt/urt_vector_tile_place_label_feature.mm
-    src/mbgl/urt/urt_vector_tile_road_feature.hpp
-    src/mbgl/urt/urt_vector_tile_road_feature.mm
-    src/mbgl/urt/urt_vector_tile_road_label_feature.hpp
-    src/mbgl/urt/urt_vector_tile_road_label_feature.mm
-    src/mbgl/urt/urt_vector_tile_water_feature.hpp
-    src/mbgl/urt/urt_vector_tile_water_feature.mm
-    src/mbgl/urt/urt_water_tile_layer.hpp
-    src/mbgl/urt/urt_water_tile_layer.mm
 )
