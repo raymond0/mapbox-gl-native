@@ -2,9 +2,10 @@
 
 #include <mbgl/gl/gl.hpp>
 #include <mbgl/map/map.hpp>
-#include <mbgl/platform/default/headless_backend.hpp>
-#include <mbgl/platform/default/offscreen_view.hpp>
-#include <mbgl/platform/default/thread_pool.hpp>
+#include <mbgl/map/backend_scope.hpp>
+#include <mbgl/gl/headless_backend.hpp>
+#include <mbgl/gl/offscreen_view.hpp>
+#include <mbgl/util/default_thread_pool.hpp>
 #include <mbgl/storage/default_file_source.hpp>
 #include <mbgl/style/layers/custom_layer.hpp>
 #include <mbgl/style/layers/fill_layer.hpp>
@@ -85,16 +86,10 @@ public:
 TEST(CustomLayer, Basic) {
     util::RunLoop loop;
 
-    HeadlessBackend backend;
-    OffscreenView view(backend.getContext());
-
-#ifdef MBGL_ASSET_ZIP
-    // Regenerate with `cd test/fixtures/api/ && zip -r assets.zip assets/`
-    DefaultFileSource fileSource(":memory:", "test/fixtures/api/assets.zip");
-#else
+    HeadlessBackend backend { test::sharedDisplay() };
+    BackendScope scope { backend };
+    OffscreenView view { backend.getContext() };
     DefaultFileSource fileSource(":memory:", "test/fixtures/api/assets");
-#endif
-
     ThreadPool threadPool(4);
 
     Map map(backend, view.getSize(), 1, fileSource, threadPool, MapMode::Still);

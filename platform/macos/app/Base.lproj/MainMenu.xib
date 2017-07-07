@@ -1,7 +1,8 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="11191" systemVersion="15G31" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="12120" systemVersion="16E195" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
     <dependencies>
-        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="11191"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="12120"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <objects>
         <customObject id="-2" userLabel="File's Owner" customClass="NSApplication">
@@ -135,7 +136,7 @@
                             </menuItem>
                             <menuItem title="Print…" keyEquivalent="p" id="aTl-1u-JFS">
                                 <connections>
-                                    <action selector="print:" target="-1" id="qaZ-4w-aoO"/>
+                                    <action selector="print:" target="Voe-Tx-rLC" id="rXg-Pd-AG8"/>
                                 </connections>
                             </menuItem>
                         </items>
@@ -366,32 +367,42 @@
                         <items>
                             <menuItem title="Streets" state="on" tag="1" keyEquivalent="1" id="17N-yz-NNo">
                                 <connections>
-                                    <action selector="setStyle:" target="-1" id="I4L-Wx-UXA"/>
+                                    <action selector="showStyle:" target="-1" id="BGu-va-ftr"/>
                                 </connections>
                             </menuItem>
                             <menuItem title="Outdoors" tag="2" keyEquivalent="2" id="BBa-Qa-SQr">
                                 <connections>
-                                    <action selector="setStyle:" target="-1" id="rM1-yG-t5u"/>
+                                    <action selector="showStyle:" target="-1" id="sQ3-b6-G1A"/>
                                 </connections>
                             </menuItem>
                             <menuItem title="Light" tag="3" keyEquivalent="3" id="HWe-7u-UVJ">
                                 <connections>
-                                    <action selector="setStyle:" target="-1" id="Q9V-O1-oRz"/>
+                                    <action selector="showStyle:" target="-1" id="jMN-oR-sbZ"/>
                                 </connections>
                             </menuItem>
                             <menuItem title="Dark" tag="4" keyEquivalent="4" id="6HI-q6-AeV">
                                 <connections>
-                                    <action selector="setStyle:" target="-1" id="YfH-1I-G50"/>
+                                    <action selector="showStyle:" target="-1" id="xgf-Sq-eJw"/>
                                 </connections>
                             </menuItem>
                             <menuItem title="Satellite" tag="5" keyEquivalent="5" id="h0J-5X-kgF">
                                 <connections>
-                                    <action selector="setStyle:" target="-1" id="GXt-oK-Hy1"/>
+                                    <action selector="showStyle:" target="-1" id="YyE-2C-Vhj"/>
                                 </connections>
                             </menuItem>
                             <menuItem title="Satellite Streets" tag="6" keyEquivalent="6" id="9BL-00-HFt">
                                 <connections>
-                                    <action selector="setStyle:" target="-1" id="oL4-AC-waq"/>
+                                    <action selector="showStyle:" target="-1" id="NTT-Y1-EqU"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Traffic Day" tag="7" keyEquivalent="7" id="m9S-sv-Dch">
+                                <connections>
+                                    <action selector="showStyle:" target="-1" id="lXM-BW-dDw"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Traffic Night" tag="8" keyEquivalent="8" id="yVS-VL-Xsy">
+                                <connections>
+                                    <action selector="showStyle:" target="-1" id="eAD-br-oBB"/>
                                 </connections>
                             </menuItem>
                             <menuItem title="Custom Style…" id="L0h-86-2cU">
@@ -429,6 +440,32 @@
                                     <action selector="toggleToolbarShown:" target="-1" id="BXY-wc-z0C"/>
                                 </connections>
                             </menuItem>
+                            <menuItem title="Show Layers" keyEquivalent="L" id="qtg-l9-BH3">
+                                <connections>
+                                    <action selector="toggleLayers:" target="-1" id="YdA-Mr-MHi"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="8aO-Nm-fxF"/>
+                            <menuItem title="Labels In" id="M7v-B1-vo3">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <menu key="submenu" title="Labels In" id="gOc-5u-4v5">
+                                    <items>
+                                        <menuItem title="Local Language" id="hTL-wF-DEs">
+                                            <modifierMask key="keyEquivalentModifierMask"/>
+                                            <connections>
+                                                <action selector="setLabelLanguage:" target="-1" id="Zc4-TL-Cxe"/>
+                                            </connections>
+                                        </menuItem>
+                                        <menuItem title="Preferred Language" tag="1" id="PkP-Ne-ISX">
+                                            <modifierMask key="keyEquivalentModifierMask"/>
+                                            <connections>
+                                                <action selector="setLabelLanguage:" target="-1" id="7Io-iF-xf8"/>
+                                            </connections>
+                                        </menuItem>
+                                    </items>
+                                </menu>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="qTh-Hu-dGV"/>
                         </items>
                     </menu>
                 </menuItem>
@@ -509,6 +546,12 @@
                                 <modifierMask key="keyEquivalentModifierMask"/>
                                 <connections>
                                     <action selector="drawAnimatedAnnotation:" target="-1" id="CYM-WB-s97"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Add Lime Green Layer" id="UWY-vl-t2m">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="insertCustomStyleLayer:" target="-1" id="LE5-lz-kx3"/>
                                 </connections>
                             </menuItem>
                             <menuItem title="Show All Annnotations" keyEquivalent="A" id="yMj-uM-8SN">
@@ -610,7 +653,7 @@ CA
                 <rect key="frame" x="0.0" y="0.0" width="350" height="84"/>
                 <autoresizingMask key="autoresizingMask"/>
                 <subviews>
-                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="0IK-AW-Gg3">
+                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" allowsCharacterPickerTouchBarItem="YES" translatesAutoresizingMaskIntoConstraints="NO" id="0IK-AW-Gg3">
                         <rect key="frame" x="18" y="45" width="89" height="17"/>
                         <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Access token:" id="Ptd-FI-M5A">
                             <font key="font" metaFont="system"/>
@@ -621,7 +664,7 @@ CA
                             <accessibilityConnection property="link" destination="7sb-sf-oJU" id="U0t-jC-oQ7"/>
                         </connections>
                     </textField>
-                    <textField verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="7sb-sf-oJU">
+                    <textField verticalHuggingPriority="750" allowsCharacterPickerTouchBarItem="YES" translatesAutoresizingMaskIntoConstraints="NO" id="7sb-sf-oJU">
                         <rect key="frame" x="113" y="42" width="197" height="22"/>
                         <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" sendsActionOnEndEditing="YES" state="on" borderStyle="bezel" drawsBackground="YES" id="jlV-TC-NUv">
                             <font key="font" metaFont="system"/>
@@ -671,6 +714,7 @@ CA
                 </constraints>
             </view>
             <connections>
+                <outlet property="delegate" destination="Voe-Tx-rLC" id="PNO-Pp-jOX"/>
                 <outlet property="initialFirstResponder" destination="7sb-sf-oJU" id="UZe-di-dnA"/>
             </connections>
             <point key="canvasLocation" x="754" y="221"/>
@@ -689,7 +733,7 @@ CA
                         <rect key="frame" x="-1" y="20" width="402" height="281"/>
                         <clipView key="contentView" id="J9U-Yx-o2S">
                             <rect key="frame" x="1" y="0.0" width="400" height="280"/>
-                            <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                            <autoresizingMask key="autoresizingMask"/>
                             <subviews>
                                 <tableView verticalHuggingPriority="750" allowsExpansionToolTips="YES" columnAutoresizingStyle="lastColumnOnly" autosaveColumns="NO" headerView="MAZ-Iq-hBi" id="Ato-Vu-HYT">
                                     <rect key="frame" x="0.0" y="0.0" width="423" height="257"/>

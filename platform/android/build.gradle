@@ -1,11 +1,9 @@
 buildscript {
     repositories {
         jcenter()
-        maven { url 'https://jitpack.io' }
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.1.3'
-        classpath 'com.github.JakeWharton:sdk-manager-plugin:220bf7a88a7072df3ed16dc8466fb144f2817070'
+        classpath 'com.android.tools.build:gradle:2.3.1'
         classpath 'com.amazonaws:aws-devicefarm-gradle-plugin:1.2'
         classpath 'com.stanfy.spoon:spoon-gradle-plugin:1.2.1'
     }
@@ -18,8 +16,12 @@ allprojects {
     }
 }
 
-apply from: 'checkstyle.gradle'
-
 task wrapper(type: Wrapper) {
-    gradleVersion = '2.14.1'
+    gradleVersion = '3.2.1'
 }
+
+apply from: rootProject.file('dependencies.gradle')
+
+// Load build system information. If this file does not exist, run
+// `make platform/android/configuration.gradle`
+apply from: rootProject.file('configuration.gradle')

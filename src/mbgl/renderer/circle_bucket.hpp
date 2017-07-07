@@ -1,39 +1,40 @@
 #pragma once
 
 #include <mbgl/renderer/bucket.hpp>
-#include <mbgl/renderer/element_group.hpp>
 #include <mbgl/map/mode.hpp>
 #include <mbgl/tile/geometry_tile_data.hpp>
 #include <mbgl/gl/vertex_buffer.hpp>
 #include <mbgl/gl/index_buffer.hpp>
-#include <mbgl/shader/circle_vertex.hpp>
+#include <mbgl/gl/segment.hpp>
+#include <mbgl/programs/circle_program.hpp>
+#include <mbgl/style/layers/circle_layer_properties.hpp>
 
 namespace mbgl {
 
-class CircleShader;
+class BucketParameters;
 
 class CircleBucket : public Bucket {
 public:
-    CircleBucket(const MapMode);
-    ~CircleBucket() override;
+    CircleBucket(const BucketParameters&, const std::vector<const RenderLayer*>&);
+
+    void addFeature(const GeometryTileFeature&,
+                    const GeometryCollection&) override;
+    bool hasData() const override;
 
     void upload(gl::Context&) override;
-    void render(Painter&, PaintParameters&, const style::Layer&, const RenderTile&) override;
 
-    bool hasData() const override;
-    bool needsClipping() const override;
-    void addGeometry(const GeometryCollection&);
+    void render(Painter&, PaintParameters&, const RenderLayer&, const RenderTile&) override;
 
-    void drawCircles(CircleShader&, gl::Context&, PaintMode);
+    float getQueryRadius(const RenderLayer&) const override;
 
-private:
-    std::vector<CircleVertex> vertices;
-    std::vector<gl::Triangle> triangles;
+    gl::VertexVector<CircleLayoutVertex> vertices;
+    gl::IndexVector<gl::Triangles> triangles;
+    gl::SegmentVector<CircleAttributes> segments;
 
-    std::vector<ElementGroup<CircleShader>> groups;
+    optional<gl::VertexBuffer<CircleLayoutVertex>> vertexBuffer;
+    optional<gl::IndexBuffer<gl::Triangles>> indexBuffer;
 
-    optional<gl::VertexBuffer<CircleVertex>> vertexBuffer;
-    optional<gl::IndexBuffer<gl::Triangle>> indexBuffer;
+    std::map<std::string, CircleProgram::PaintPropertyBinders> paintPropertyBinders;
 
     const MapMode mode;
 };

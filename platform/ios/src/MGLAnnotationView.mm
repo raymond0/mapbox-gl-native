@@ -10,8 +10,8 @@
 @interface MGLAnnotationView () <UIGestureRecognizerDelegate>
 
 @property (nonatomic, readwrite, nullable) NSString *reuseIdentifier;
-@property (nonatomic, readwrite, nullable) id <MGLAnnotation> annotation;
 @property (nonatomic, readwrite) CATransform3D lastAppliedScaleTransform;
+@property (nonatomic, readwrite) CATransform3D lastAppliedRotateTransform;
 @property (nonatomic, weak) UIPanGestureRecognizer *panGestureRecognizer;
 @property (nonatomic, weak) UILongPressGestureRecognizer *longPressRecognizer;
 @property (nonatomic, weak) MGLMapView *mapView;
@@ -20,17 +20,58 @@
 
 @implementation MGLAnnotationView
 
-- (instancetype)initWithReuseIdentifier:(NSString *)reuseIdentifier
-{
-    self = [self initWithFrame:CGRectZero];
-    if (self)
-    {
-        _lastAppliedScaleTransform = CATransform3DIdentity;
-        _reuseIdentifier = [reuseIdentifier copy];
-        _scalesWithViewingDistance = YES;
-        _enabled = YES;
++ (BOOL)supportsSecureCoding {
+    return YES;
+}
+
+- (instancetype)initWithReuseIdentifier:(NSString *)reuseIdentifier {
+    self = [super initWithFrame:CGRectZero];
+    if (self) {
+        [self commonInitWithAnnotation:nil reuseIdentifier:reuseIdentifier];
     }
     return self;
+}
+
+- (instancetype)initWithAnnotation:(nullable id<MGLAnnotation>)annotation reuseIdentifier:(nullable NSString *)reuseIdentifier {
+    self = [super initWithFrame:CGRectZero];
+    if (self) {
+        [self commonInitWithAnnotation:annotation reuseIdentifier:reuseIdentifier];
+    }
+    return self;
+}
+
+- (void)commonInitWithAnnotation:(nullable id<MGLAnnotation>)annotation reuseIdentifier:(nullable NSString *)reuseIdentifier {
+    _lastAppliedScaleTransform = CATransform3DIdentity;
+    _annotation = annotation;
+    _reuseIdentifier = [reuseIdentifier copy];
+    _scalesWithViewingDistance = YES;
+    _enabled = YES;
+}
+
+- (instancetype)initWithCoder:(NSCoder *)decoder {
+    if (self = [super initWithCoder:decoder]) {
+        _reuseIdentifier = [decoder decodeObjectOfClass:[NSString class] forKey:@"reuseIdentifier"];
+        _annotation = [decoder decodeObjectOfClass:[NSObject class] forKey:@"annotation"];
+        _centerOffset = [decoder decodeCGVectorForKey:@"centerOffset"];
+        _scalesWithViewingDistance = [decoder decodeBoolForKey:@"scalesWithViewingDistance"];
+        _rotatesToMatchCamera = [decoder decodeBoolForKey:@"rotatesToMatchCamera"];
+        _selected = [decoder decodeBoolForKey:@"selected"];
+        _enabled = [decoder decodeBoolForKey:@"enabled"];
+        self.draggable = [decoder decodeBoolForKey:@"draggable"];
+    }
+    return self;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder {
+    [super encodeWithCoder:coder];
+    [coder encodeObject:_reuseIdentifier forKey:@"reuseIdentifier"];
+    [coder encodeObject:_annotation forKey:@"annotation"];
+    [coder encodeCGVector:_centerOffset forKey:@"centerOffset"];
+    [coder encodeBool:_scalesWithViewingDistance forKey:@"scalesWithViewingDistance"];
+    [coder encodeBool:_rotatesToMatchCamera forKey:@"rotatesToMatchCamera"];
+    [coder encodeBool:_selected forKey:@"selected"];
+    [coder encodeBool:_enabled forKey:@"enabled"];
+    [coder encodeBool:_draggable forKey:@"draggable"];
 }
 
 - (void)prepareForReuse
@@ -68,9 +109,10 @@
 {
     center.x += _centerOffset.dx;
     center.y += _centerOffset.dy;
-    
+
     super.center = center;
     [self updateScaleTransformForViewingDistance];
+    [self updateRotateTransform];
 }
 
 - (void)setScalesWithViewingDistance:(BOOL)scalesWithViewingDistance
@@ -94,14 +136,14 @@
         // or 75%. The range goes from a maximum of 100% to 0% as the view moves from the top to the bottom
         // along the y axis of its superview.
         CGFloat maxScaleReduction = 1.0 - self.center.y / superviewHeight;
-       
+
         // The pitch intensity represents how much the map view is actually pitched compared to
         // what is possible. The value will range from 0% (not pitched at all) to 100% (pitched as much
         // as the map view will allow). The map view's maximum pitch is defined in `mbgl::util::PITCH_MAX`.
         // Since it is possible for the map view to report a pitch less than 0 due to the nature of
         // how the gesture information is captured, the value is guarded with MAX.
         CGFloat pitchIntensity = MAX(self.mapView.camera.pitch, 0) / MGLDegreesFromRadians(mbgl::util::PITCH_MAX);
-       
+
         // The pitch adjusted scale is the inverse proportion of the maximum possible scale reduction
         // multiplied by the pitch intensity. For example, if the maximum scale reduction is 75% and the
         // map view is 50% pitched then the annotation view should be reduced by 37.5% (.75 * .5). The
@@ -119,6 +161,26 @@
     }
 }
 
+- (void)setRotatesToMatchCamera:(BOOL)rotatesToMatchCamera
+{
+    if (_rotatesToMatchCamera != rotatesToMatchCamera)
+    {
+        _rotatesToMatchCamera = rotatesToMatchCamera;
+        [self updateRotateTransform];
+    }
+}
+
+- (void)updateRotateTransform
+{
+    if (self.rotatesToMatchCamera == NO) return;
+
+    CGFloat directionRad = self.mapView.direction * M_PI / 180.0;
+    CATransform3D newRotateTransform = CATransform3DMakeRotation(-directionRad, 0, 0, 1);
+    self.layer.transform = CATransform3DConcat(CATransform3DIdentity, newRotateTransform);
+    
+    _lastAppliedRotateTransform = newRotateTransform;
+}
+
 #pragma mark - Draggable
 
 - (void)setDraggable:(BOOL)draggable
@@ -126,7 +188,7 @@
     [self willChangeValueForKey:@"draggable"];
     _draggable = draggable;
     [self didChangeValueForKey:@"draggable"];
-    
+
     if (draggable)
     {
         [self enableDrag];
@@ -146,7 +208,7 @@
         [self addGestureRecognizer:recognizer];
         _longPressRecognizer = recognizer;
     }
-    
+
     if (!_panGestureRecognizer)
     {
         UIPanGestureRecognizer *recognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
@@ -204,7 +266,7 @@
     [self willChangeValueForKey:@"dragState"];
     _dragState = dragState;
     [self didChangeValueForKey:@"dragState"];
-    
+
     if (dragState == MGLAnnotationViewDragStateStarting)
     {
         [self.mapView.calloutViewForSelectedAnnotation dismissCalloutAnimated:animated];
@@ -212,6 +274,10 @@
     }
     else if (dragState == MGLAnnotationViewDragStateCanceling)
     {
+        if (!self.annotation) {
+            [NSException raise:NSInvalidArgumentException
+                        format:@"Annotation property should not be nil."];
+        }
         self.panGestureRecognizer.enabled = NO;
         self.longPressRecognizer.enabled = NO;
         self.center = [self.mapView convertCoordinate:self.annotation.coordinate toPointToView:self.mapView];
@@ -232,7 +298,7 @@
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer
 {
     BOOL isDragging = self.dragState == MGLAnnotationViewDragStateDragging;
-    
+
     if (gestureRecognizer == _panGestureRecognizer && !(isDragging))
     {
         return NO;

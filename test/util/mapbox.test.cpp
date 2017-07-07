@@ -1,10 +1,10 @@
 #include <mbgl/test/util.hpp>
 
-#include <mbgl/platform/log.hpp>
+#include <mbgl/util/logging.hpp>
 #include <mbgl/util/mapbox.hpp>
 #include <mbgl/util/constants.hpp>
-#include <regex>
-#include <iostream>
+#include <mbgl/util/tileset.hpp>
+#include <stdexcept>
 
 using namespace mbgl;
 
@@ -91,9 +91,9 @@ TEST(Mapbox, SpriteURL) {
         "https://api.mapbox.com/styles/v1/mapbox/streets-v8/draft/sprite@2x.png?access_token=key",
         mbgl::util::mapbox::normalizeSpriteURL(util::API_BASE_URL, "mapbox://sprites/mapbox/streets-v8/draft@2x.png", "key"));
     EXPECT_EQ(
-        "mapbox://sprites/mapbox/streets-v9?fresh=true.png",
+        "https://api.mapbox.com/styles/v1/mapbox/streets-v10/sprite?access_token=key&fresh=true.png",
         mbgl::util::mapbox::normalizeSpriteURL(util::API_BASE_URL,
-            "mapbox://sprites/mapbox/streets-v9?fresh=true.png",
+            "mapbox://sprites/mapbox/streets-v10?fresh=true.png",
             "key"));
     EXPECT_EQ("mapbox://////", mbgl::util::mapbox::normalizeSpriteURL(util::API_BASE_URL, "mapbox://////", "key"));
 }
@@ -138,6 +138,9 @@ TEST(Mapbox, CanonicalURL) {
     EXPECT_EQ(
         "mapbox://tiles/a.b/{z}/{x}/{y}.vector.pbf",
         mbgl::util::mapbox::canonicalizeTileURL("http://api.mapbox.com/v4/a.b/{z}/{x}/{y}.vector.pbf?access_token=key", SourceType::Vector, 512));
+    EXPECT_EQ(
+        "mapbox://tiles/a.b/{z}/{x}/{y}.vector.pbf",
+        mbgl::util::mapbox::canonicalizeTileURL("https://api.mapbox.cn/v4/a.b/{z}/{x}/{y}.vector.pbf?access_token=key", SourceType::Vector, 512));
     EXPECT_EQ(
         "mapbox://tiles/a.b,c.d/{z}/{x}/{y}.vector.pbf",
         mbgl::util::mapbox::canonicalizeTileURL("http://api.mapbox.com/v4/a.b,c.d/{z}/{x}/{y}.vector.pbf?access_token=key", SourceType::Vector, 512));
@@ -207,4 +210,30 @@ TEST(Mapbox, CanonicalURL) {
     EXPECT_EQ(
         "http://api.mapbox.com/v4/a.b/{z}/{x}/{y}/.",
         mbgl::util::mapbox::canonicalizeTileURL("http://api.mapbox.com/v4/a.b/{z}/{x}/{y}/.", SourceType::Raster, 256));
+}
+
+TEST(Mapbox, CanonicalizeRasterTileset) {
+    mbgl::Tileset tileset;
+    tileset.tiles = {
+        "http://a.tiles.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}.png?access_token=key"
+    };
+
+    mbgl::util::mapbox::canonicalizeTileset(tileset, "mapbox://mapbox.satellite", SourceType::Raster, 256);
+
+#if !defined(__ANDROID__) && !defined(__APPLE__)
+    EXPECT_EQ("mapbox://tiles/mapbox.satellite/{z}/{x}/{y}{ratio}.webp", tileset.tiles[0]);
+#else
+    EXPECT_EQ("mapbox://tiles/mapbox.satellite/{z}/{x}/{y}{ratio}.png", tileset.tiles[0]);
+#endif
+}
+
+TEST(Mapbox, CanonicalizeVectorTileset) {
+    mbgl::Tileset tileset;
+    tileset.tiles = {
+        "http://a.tiles.mapbox.com/v4/mapbox.streets/{z}/{x}/{y}.vector.pbf?access_token=key"
+    };
+
+    mbgl::util::mapbox::canonicalizeTileset(tileset, "mapbox://mapbox.streets", SourceType::Vector, 512);
+
+    EXPECT_EQ("mapbox://tiles/mapbox.streets/{z}/{x}/{y}.vector.pbf", tileset.tiles[0]);
 }

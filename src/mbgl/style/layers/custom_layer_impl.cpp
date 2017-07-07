@@ -1,15 +1,20 @@
 #include <mbgl/style/layers/custom_layer_impl.hpp>
-#include <mbgl/renderer/bucket.hpp>
+#include <mbgl/renderer/render_custom_layer.hpp>
 #include <mbgl/map/transform_state.hpp>
-
+#include <mbgl/util/logging.hpp>
 namespace mbgl {
 namespace style {
+
+std::unique_ptr<RenderLayer> CustomLayer::Impl::createRenderLayer() const {
+    return std::make_unique<RenderCustomLayer>(*this);
+}
 
 CustomLayer::Impl::Impl(const std::string& id_,
                          CustomLayerInitializeFunction initializeFn_,
                          CustomLayerRenderFunction renderFn_,
                          CustomLayerDeinitializeFunction deinitializeFn_,
                          void* context_) {
+    Log::Info(Event::General, "New custom layer Impl: %s", id_.c_str());
     id = id_;
     initializeFn = initializeFn_;
     renderFn = renderFn_;
@@ -17,8 +22,8 @@ CustomLayer::Impl::Impl(const std::string& id_,
     context = context_;
 }
 
-CustomLayer::Impl::Impl(const CustomLayer::Impl& other)
-    : Layer::Impl(other) {
+CustomLayer::Impl::Impl(const CustomLayer::Impl &other)
+        : Layer::Impl(other) {
     id = other.id;
     // Don't copy anything else.
 }
@@ -32,6 +37,9 @@ std::unique_ptr<Layer> CustomLayer::Impl::clone() const {
 std::unique_ptr<Layer> CustomLayer::Impl::cloneRef(const std::string&) const {
     assert(false);
     return std::make_unique<CustomLayer>(*this);
+}
+
+void CustomLayer::Impl::stringifyLayout(rapidjson::Writer<rapidjson::StringBuffer>&) const {
 }
 
 void CustomLayer::Impl::initialize() {
@@ -50,25 +58,16 @@ void CustomLayer::Impl::render(const TransformState& state) const {
 
     CustomLayerRenderParameters parameters;
 
-    parameters.width = state.getWidth();
-    parameters.height = state.getHeight();
-    parameters.latitude = state.getLatLng().latitude;
-    parameters.longitude = state.getLatLng().longitude;
+    parameters.width = state.getSize().width;
+    parameters.height = state.getSize().height;
+    parameters.latitude = state.getLatLng().latitude();
+    parameters.longitude = state.getLatLng().longitude();
     parameters.zoom = state.getZoom();
     parameters.bearing = -state.getAngle() * util::RAD2DEG;
     parameters.pitch = state.getPitch();
-    parameters.altitude = state.getAltitude();
+    parameters.fieldOfView = state.getFieldOfView();
 
     renderFn(context, parameters);
-}
-
-bool CustomLayer::Impl::recalculate(const CalculationParameters&) {
-    passes = RenderPass::Translucent;
-    return false;
-}
-
-std::unique_ptr<Bucket> CustomLayer::Impl::createBucket(BucketParameters&) const {
-    return nullptr;
 }
 
 } // namespace style

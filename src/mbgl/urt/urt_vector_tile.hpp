@@ -13,6 +13,8 @@
 #include <mbgl/urt/urt_tile_data.hpp>
 #include <mbgl/tile/geometry_tile_data.hpp>
 #include <mbgl/tile/vector_tile.hpp>
+#include <mbgl/style/style.hpp>
+#include <mbgl/renderer/tile_parameters.hpp>
 
 namespace mbgl {
 
@@ -21,7 +23,7 @@ class UrtVectorTile : virtual public GeometryTile
 public:
     UrtVectorTile(const OverscaledTileID& id_,
                   std::string sourceID_,
-                  const style::UpdateParameters& parameters,
+                  const TileParameters& parameters,
                   const Tileset& tileset);
     
     ~UrtVectorTile() = default;
@@ -42,9 +44,9 @@ class AutoVectorTile : virtual public VectorTile, virtual public UrtVectorTile
 public:
     AutoVectorTile(const OverscaledTileID& id_,
                    std::string sourceID_,
-                   const style::UpdateParameters& parameters,
+                   const TileParameters& parameters,
                    const Tileset& tileset) :
-    GeometryTile(id_, sourceID_, parameters),
+    GeometryTile(id_, sourceID_, parameters, *parameters.style.glyphAtlas, *parameters.style.spriteAtlas),
     VectorTile( id_, sourceID_, parameters, tileset),
     UrtVectorTile( id_, sourceID_, parameters, tileset )
     {

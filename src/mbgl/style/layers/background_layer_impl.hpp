@@ -11,13 +11,11 @@ class BackgroundLayer::Impl : public Layer::Impl {
 public:
     std::unique_ptr<Layer> clone() const override;
     std::unique_ptr<Layer> cloneRef(const std::string& id) const override;
+    void stringifyLayout(rapidjson::Writer<rapidjson::StringBuffer>&) const override;
 
-    void cascade(const CascadeParameters&) override;
-    bool recalculate(const CalculationParameters&) override;
+    std::unique_ptr<RenderLayer> createRenderLayer() const override;
 
-    std::unique_ptr<Bucket> createBucket(BucketParameters&) const override;
-
-    BackgroundPaintProperties paint;
+    BackgroundPaintProperties::Cascading cascading;
 };
 
 } // namespace style

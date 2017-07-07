@@ -4,6 +4,9 @@
 #include <mbgl/style/layers/symbol_layer_properties.hpp>
 #include <mbgl/layout/symbol_feature.hpp>
 #include <mbgl/layout/symbol_instance.hpp>
+#include <mbgl/text/bidi.hpp>
+#include <mbgl/style/layers/symbol_layer_impl.hpp>
+#include <mbgl/programs/symbol_program.hpp>
 
 #include <memory>
 #include <map>
@@ -12,35 +15,25 @@
 
 namespace mbgl {
 
-class GeometryTileLayer;
+class BucketParameters;
 class CollisionTile;
-class SpriteAtlas;
-class GlyphAtlas;
 class SymbolBucket;
+class Anchor;
+class RenderLayer;
 
 namespace style {
 class Filter;
 } // namespace style
 
-struct Anchor;
-
 class SymbolLayout {
 public:
-    SymbolLayout(std::string bucketName_,
-                 std::string sourceLayerName_,
-                 uint32_t overscaling,
-                 float zoom,
-                 const MapMode,
+    SymbolLayout(const BucketParameters&,
+                 const std::vector<const RenderLayer*>&,
                  const GeometryTileLayer&,
-                 const style::Filter&,
-                 style::SymbolLayoutProperties,
-                 float textMaxSize,
-                 SpriteAtlas&);
+                 IconDependencies&,
+                 GlyphDependencies&);
 
-    bool canPrepare(GlyphAtlas&);
-
-    void prepare(uintptr_t tileUID,
-                 GlyphAtlas&);
+    void prepare(const GlyphPositionMap& glyphs, const IconMap& icons);
 
     std::unique_ptr<SymbolBucket> place(CollisionTile&);
 
@@ -48,49 +41,59 @@ public:
 
     enum State {
         Pending,  // Waiting for the necessary glyphs or icons to be available.
-        Prepared, // The potential positions of text and icons have been determined.
         Placed    // The final positions have been determined, taking into account prior layers.
     };
 
     State state = Pending;
 
-    const std::string bucketName;
-    const std::string sourceLayerName;
+    std::map<std::string,
+        std::pair<style::IconPaintProperties::Evaluated, style::TextPaintProperties::Evaluated>> layerPaintProperties;
 
 private:
-    void addFeature(const GeometryCollection&,
-                    const Shaping& shapedText,
-                    const PositionedIcon& shapedIcon,
-                    const GlyphPositions& face,
-                    const size_t index);
+    void addFeature(const size_t,
+                    const SymbolFeature&,
+                    const std::pair<Shaping, Shaping>& shapedTextOrientations,
+                    optional<PositionedIcon> shapedIcon,
+                    const GlyphPositions& face);
 
-    bool anchorIsTooClose(const std::u32string& text, const float repeatDistance, Anchor&);
-    std::map<std::u32string, std::vector<Anchor>> compareText;
+    bool anchorIsTooClose(const std::u16string& text, const float repeatDistance, const Anchor&);
+    std::map<std::u16string, std::vector<Anchor>> compareText;
 
     void addToDebugBuffers(CollisionTile&, SymbolBucket&);
 
     // Adds placed items to the buffer.
     template <typename Buffer>
-    void addSymbols(Buffer&, const SymbolQuads&, float scale,
-                    const bool keepUpright, const style::SymbolPlacementType, const float placementAngle);
+    void addSymbol(Buffer&,
+                   SymbolSizeBinder& sizeBinder,
+                   const SymbolQuad&,
+                   const SymbolFeature& feature,
+                   float scale,
+                   const bool keepUpright,
+                   const style::SymbolPlacementType,
+                   const float placementAngle,
+                   WritingModeType writingModes);
 
+    const std::string sourceLayerName;
+    const std::string bucketName;
     const float overscaling;
     const float zoom;
     const MapMode mode;
-    const style::SymbolLayoutProperties layout;
-    const float textMaxSize;
 
-    SpriteAtlas& spriteAtlas;
+    style::SymbolLayoutProperties::PossiblyEvaluated layout;
 
     const uint32_t tileSize;
     const float tilePixelRatio;
 
     bool sdfIcons = false;
     bool iconsNeedLinear = false;
+    
+    style::TextSize::UnevaluatedType textSize;
+    style::IconSize::UnevaluatedType iconSize;
 
-    GlyphRangeSet ranges;
     std::vector<SymbolInstance> symbolInstances;
     std::vector<SymbolFeature> features;
+
+    BiDi bidi; // Consider moving this up to geometry tile worker to reduce reinstantiation costs; use of BiDi/ubiditransform object must be constrained to one thread
 };
 
 } // namespace mbgl

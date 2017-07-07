@@ -1,20 +1,17 @@
-/* Linked part of copyright notice */
-"COPYRIGHT_MAPBOX" = "Mapbox";
+/* User-friendly error description */
+"LOAD_MAP_FAILED_DESC" = "The map failed to load because an unknown error occurred.";
 
-/* Copyright notice link */
-"COPYRIGHT_MAPBOX_LINK" = "https://www.mapbox.com/about/maps/";
-
-/* Linked part of copyright notice */
-"COPYRIGHT_OSM" = "OpenStreetMap";
-
-/* Copyright notice link */
-"COPYRIGHT_OSM_LINK" = "http://www.openstreetmap.org/about/";
-
-/* Copyright notice prefix */
-"COPYRIGHT_PREFIX" = "© ";
+/* User-friendly error description */
+"LOAD_STYLE_FAILED_DESC" = "The map failed to load because the style can't be loaded.";
 
 /* Accessibility title */
 "MAP_A11Y_TITLE" = "Mapbox";
+
+/* User-friendly error description */
+"PARSE_STYLE_FAILED_DESC" = "The map failed to load because the style is corrupted.";
+
+/* User-friendly error description */
+"STYLE_NOT_FOUND_DESC" = "The map failed to load because the style can’t be found or is incompatible.";
 
 /* Label of Zoom In button */
 "ZOOM_IN_LABEL" = "+";

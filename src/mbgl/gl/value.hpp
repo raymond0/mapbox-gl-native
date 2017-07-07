@@ -1,10 +1,18 @@
 #pragma once
 
 #include <mbgl/gl/types.hpp>
+#include <mbgl/gl/depth_mode.hpp>
+#include <mbgl/gl/stencil_mode.hpp>
+#include <mbgl/gl/color_mode.hpp>
 #include <mbgl/util/color.hpp>
+#include <mbgl/util/size.hpp>
+#include <mbgl/util/range.hpp>
 
 namespace mbgl {
 namespace gl {
+
+class Context;
+
 namespace value {
 
 struct ClearDepth {
@@ -16,20 +24,20 @@ struct ClearDepth {
 
 struct ClearColor {
     using Type = Color;
-    static const constexpr Type Default = { 0, 0, 0, 0 };
+    static const Type Default;
     static void Set(const Type&);
     static Type Get();
 };
 
 struct ClearStencil {
-    using Type = StencilValue;
+    using Type = int32_t;
     static const constexpr Type Default = 0;
     static void Set(const Type&);
     static Type Get();
 };
 
 struct StencilMask {
-    using Type = StencilMaskValue;
+    using Type = uint32_t;
     static const constexpr Type Default = ~0u;
     static void Set(const Type&);
     static Type Get();
@@ -43,28 +51,19 @@ struct DepthMask {
 };
 
 struct ColorMask {
-    struct Type {
-        bool r;
-        bool g;
-        bool b;
-        bool a;
-    };
+    using Type = ColorMode::Mask;
     static const constexpr Type Default = { true, true, true, true };
     static void Set(const Type&);
     static Type Get();
 };
 
-constexpr bool operator!=(const ColorMask::Type& a, const ColorMask::Type& b) {
-    return a.r != b.r || a.g != b.g || a.b != b.b || a.a != b.a;
-}
-
 struct StencilFunc {
     struct Type {
-        StencilTestFunction func;
-        StencilValue ref;
-        StencilMaskValue mask;
+        uint32_t func;
+        int32_t ref;
+        uint32_t mask;
     };
-    static const constexpr Type Default = { StencilTestFunction::Always, 0, ~0u };
+    static const constexpr Type Default = { StencilMode::Always::func, 0, ~0u };
     static void Set(const Type&);
     static Type Get();
 };
@@ -82,12 +81,11 @@ struct StencilTest {
 
 struct StencilOp {
     struct Type {
-        StencilTestOperation sfail;
-        StencilTestOperation dpfail;
-        StencilTestOperation dppass;
+        StencilMode::Op sfail;
+        StencilMode::Op dpfail;
+        StencilMode::Op dppass;
     };
-    static const constexpr Type Default = { StencilTestOperation::Keep, StencilTestOperation::Keep,
-                                            StencilTestOperation::Keep };
+    static const constexpr Type Default = { StencilMode::Keep, StencilMode::Keep, StencilMode::Keep };
     static void Set(const Type&);
     static Type Get();
 };
@@ -97,18 +95,11 @@ constexpr bool operator!=(const StencilOp::Type& a, const StencilOp::Type& b) {
 }
 
 struct DepthRange {
-    struct Type {
-        float near;
-        float far;
-    };
+    using Type = Range<float>;
     static const constexpr Type Default = { 0, 1 };
     static void Set(const Type&);
     static Type Get();
 };
-
-constexpr bool operator!=(const DepthRange::Type& a, const DepthRange::Type& b) {
-    return a.near != b.near || a.far != b.far;
-}
 
 struct DepthTest {
     using Type = bool;
@@ -118,8 +109,8 @@ struct DepthTest {
 };
 
 struct DepthFunc {
-    using Type = DepthTestFunction;
-    static const constexpr Type Default = DepthTestFunction::Less;
+    using Type = DepthMode::Function;
+    static const constexpr Type Default = DepthMode::Less;
     static void Set(const Type&);
     static Type Get();
 };
@@ -131,12 +122,19 @@ struct Blend {
     static Type Get();
 };
 
+struct BlendEquation {
+    using Type = ColorMode::BlendEquation;
+    static const constexpr Type Default = ColorMode::BlendEquation::Add;
+    static void Set(const Type&);
+    static Type Get();
+};
+
 struct BlendFunc {
     struct Type {
-        BlendSourceFactor sfactor;
-        BlendDestinationFactor dfactor;
+        ColorMode::BlendFactor sfactor;
+        ColorMode::BlendFactor dfactor;
     };
-    static const constexpr Type Default = { BlendSourceFactor::One, BlendDestinationFactor::Zero };
+    static const constexpr Type Default = { ColorMode::One, ColorMode::Zero };
     static void Set(const Type&);
     static Type Get();
 };
@@ -147,7 +145,7 @@ constexpr bool operator!=(const BlendFunc::Type& a, const BlendFunc::Type& b) {
 
 struct BlendColor {
     using Type = Color;
-    static const constexpr Type Default = { 0, 0, 0, 0 };
+    static const Type Default;
     static void Set(const Type&);
     static Type Get();
 };
@@ -177,16 +175,19 @@ struct Viewport {
     struct Type {
         int32_t x;
         int32_t y;
-        uint16_t width;
-        uint16_t height;
+        Size size;
     };
-    static const constexpr Type Default = { 0, 0, 0, 0 };
+    static const constexpr Type Default = { 0, 0, { 0, 0 } };
     static void Set(const Type&);
     static Type Get();
 };
 
 constexpr bool operator!=(const Viewport::Type& a, const Viewport::Type& b) {
-    return a.x != b.x || a.y != b.y || a.width != b.width || a.height != b.height;
+    return a.x != b.x || a.y != b.y || a.size != b.size;
+}
+
+constexpr bool operator==(const Viewport::Type& a, const Viewport::Type& b) {
+    return !(a != b);
 }
 
 struct BindFramebuffer {
@@ -227,11 +228,18 @@ struct BindElementBuffer {
 struct BindVertexArray {
     using Type = gl::VertexArrayID;
     static const constexpr Type Default = 0;
-    static void Set(const Type&);
-    static Type Get();
+    static void Set(const Type&, const Context&);
+    static Type Get(const Context&);
 };
 
 #if not MBGL_USE_GLES2
+
+struct PointSize {
+    using Type = float;
+    static const constexpr Type Default = 1;
+    static void Set(const Type&);
+    static Type Get();
+};
 
 struct PixelZoom {
     struct Type {
@@ -254,13 +262,55 @@ struct RasterPos {
         double z;
         double w;
     };
-    static const constexpr Type Default = { 0, 0, 0, 0 };
+    static const constexpr Type Default = { 0, 0, 0, 1 };
     static void Set(const Type&);
     static Type Get();
 };
 
 constexpr bool operator!=(const RasterPos::Type& a, const RasterPos::Type& b) {
     return a.x != b.x || a.y != b.y || a.z != b.z || a.w != b.w;
+}
+
+struct PixelStorePack {
+    using Type = PixelStorageType;
+    static const constexpr Type Default = { 4 };
+    static void Set(const Type&);
+    static Type Get();
+};
+
+struct PixelStoreUnpack {
+    using Type = PixelStorageType;
+    static const constexpr Type Default = { 4 };
+    static void Set(const Type&);
+    static Type Get();
+};
+
+struct PixelTransferDepth {
+    struct Type {
+        float scale;
+        float bias;
+    };
+    static const constexpr Type Default = { 1, 0 };
+    static void Set(const Type&);
+    static Type Get();
+};
+
+constexpr bool operator!=(const PixelTransferDepth::Type& a, const PixelTransferDepth::Type& b) {
+    return a.scale != b.scale || a.bias != b.bias;
+}
+
+struct PixelTransferStencil {
+    struct Type {
+        int32_t shift;
+        int32_t offset;
+    };
+    static const constexpr Type Default = { 0, 0 };
+    static void Set(const Type&);
+    static Type Get();
+};
+
+constexpr bool operator!=(const PixelTransferStencil::Type& a, const PixelTransferStencil::Type& b) {
+    return a.shift != b.shift || a.offset != b.offset;
 }
 
 #endif // MBGL_USE_GLES2

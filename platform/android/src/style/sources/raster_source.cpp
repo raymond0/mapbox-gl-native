@@ -16,7 +16,7 @@ namespace android {
             env,
             std::make_unique<mbgl::style::RasterSource>(
                 jni::Make<std::string>(env, sourceId),
-                *style::conversion::convert<variant<std::string, Tileset>>(Value(env, urlOrTileSet)),
+                convertURLOrTileset(Value(env, urlOrTileSet)),
                 tileSize
             )
         ) {
@@ -28,6 +28,11 @@ namespace android {
 
     RasterSource::~RasterSource() = default;
 
+    jni::String RasterSource::getURL(jni::JNIEnv& env) {
+        optional<std::string> url = source.as<mbgl::style::RasterSource>()->RasterSource::getURL();
+        return url ? jni::Make<jni::String>(env, *url) : jni::String();
+    }
+
     jni::Class<RasterSource> RasterSource::javaClass;
 
     jni::jobject* RasterSource::createJavaPeer(jni::JNIEnv& env) {
@@ -36,17 +41,18 @@ namespace android {
     }
 
     void RasterSource::registerNative(jni::JNIEnv& env) {
-        //Lookup the class
+        // Lookup the class
         RasterSource::javaClass = *jni::Class<RasterSource>::Find(env).NewGlobalRef(env).release();
 
         #define METHOD(MethodPtr, name) jni::MakeNativePeerMethod<decltype(MethodPtr), (MethodPtr)>(name)
 
-        //Register the peer
+        // Register the peer
         jni::RegisterNativePeer<RasterSource>(
             env, RasterSource::javaClass, "nativePtr",
             std::make_unique<RasterSource, JNIEnv&, jni::String, jni::Object<>, jni::jint>,
             "initialize",
-            "finalize"
+            "finalize",
+            METHOD(&RasterSource::getURL, "nativeGetUrl")
         );
     }
 

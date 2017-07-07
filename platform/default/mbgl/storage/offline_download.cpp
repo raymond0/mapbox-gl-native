@@ -7,6 +7,8 @@
 #include <mbgl/style/parser.hpp>
 #include <mbgl/style/sources/geojson_source_impl.hpp>
 #include <mbgl/style/tile_source_impl.hpp>
+#include <mbgl/style/conversion/json.hpp>
+#include <mbgl/style/conversion/tileset.hpp>
 #include <mbgl/text/glyph.hpp>
 #include <mbgl/util/mapbox.hpp>
 #include <mbgl/util/run_loop.hpp>
@@ -87,9 +89,12 @@ OfflineRegionStatus OfflineDownload::getStatus() const {
                 const std::string& url = urlOrTileset.get<std::string>();
                 optional<Response> sourceResponse = offlineDatabase.get(Resource::source(url));
                 if (sourceResponse) {
-                    result.requiredResourceCount +=
-                        definition.tileCover(type, tileSize, style::TileSourceImpl::parseTileJSON(
-                            *sourceResponse->data, url, type, tileSize).zoomRange).size();
+                    style::conversion::Error error;
+                    optional<Tileset> tileset = style::conversion::convertJSON<Tileset>(*sourceResponse->data, error);
+                    if (tileset) {
+                        result.requiredResourceCount +=
+                            definition.tileCover(type, tileSize, (*tileset).zoomRange).size();
+                    }
                 } else {
                     result.requiredResourceCountIsPrecise = false;
                 }
@@ -98,9 +103,7 @@ OfflineRegionStatus OfflineDownload::getStatus() const {
         }
 
         case SourceType::GeoJSON: {
-            style::GeoJSONSource::Impl* geojsonSource =
-                static_cast<style::GeoJSONSource::Impl*>(source->baseImpl.get());
-
+            style::GeoJSONSource* geojsonSource = source->as<style::GeoJSONSource>();
             if (geojsonSource->getURL()) {
                 result.requiredResourceCount += 1;
             }
@@ -154,12 +157,16 @@ void OfflineDownload::activateDownload() {
                     requiredSourceURLs.insert(url);
 
                     ensureResource(Resource::source(url), [=](Response sourceResponse) {
-                        queueTiles(type, tileSize, style::TileSourceImpl::parseTileJSON(
-                            *sourceResponse.data, url, type, tileSize));
+                        style::conversion::Error error;
+                        optional<Tileset> tileset = style::conversion::convertJSON<Tileset>(*sourceResponse.data, error);
+                        if (tileset) {
+                            util::mapbox::canonicalizeTileset(*tileset, url, type, tileSize);
+                            queueTiles(type, tileSize, *tileset);
 
-                        requiredSourceURLs.erase(url);
-                        if (requiredSourceURLs.empty()) {
-                            status.requiredResourceCountIsPrecise = true;
+                            requiredSourceURLs.erase(url);
+                            if (requiredSourceURLs.empty()) {
+                                status.requiredResourceCountIsPrecise = true;
+                            }
                         }
                     });
                 }
@@ -184,7 +191,7 @@ void OfflineDownload::activateDownload() {
 
         if (!parser.glyphURL.empty()) {
             for (const auto& fontStack : parser.fontStacks()) {
-                for (uint32_t i = 0; i < GLYPH_RANGES_PER_FONT_STACK; i++) {
+                for (char16_t i = 0; i < GLYPH_RANGES_PER_FONT_STACK; i++) {
                     queueResource(Resource::glyphs(parser.glyphURL, fontStack, getGlyphRange(i * GLYPHS_PER_GLYPH_RANGE)));
                 }
             }
@@ -252,7 +259,7 @@ void OfflineDownload::ensureResource(const Resource& resource,
     auto workRequestsIt = requests.insert(requests.begin(), nullptr);
     *workRequestsIt = util::RunLoop::Get()->invokeCancellable([=]() {
         requests.erase(workRequestsIt);
-        
+
         auto getResourceSizeInDatabase = [&] () -> optional<int64_t> {
             if (!callback) {
                 return offlineDatabase.hasRegionResource(id, resource);
@@ -264,7 +271,7 @@ void OfflineDownload::ensureResource(const Resource& resource,
             callback(response->first);
             return response->second;
         };
-        
+
         optional<int64_t> offlineResponse = getResourceSizeInDatabase();
         if (offlineResponse) {
             status.completedResourceCount++;

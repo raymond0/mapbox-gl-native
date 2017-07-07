@@ -1,8 +1,8 @@
 #pragma once
 
 #include <mbgl/algorithm/generate_clip_ids.hpp>
-#include <mbgl/util/math.hpp>
-#include <mbgl/platform/log.hpp>
+#include <mbgl/math/log2.hpp>
+#include <mbgl/util/logging.hpp>
 
 namespace mbgl {
 namespace algorithm {
@@ -15,6 +15,10 @@ void ClipIDGenerator::update(Renderables& renderables) {
     for (auto it = renderables.begin(); it != end; it++) {
         auto& tileID = it->first;
         auto& renderable = it->second;
+        if (!renderable.used) {
+            continue;
+        }
+
         renderable.clip = {};
         Leaf leaf{ renderable.clip };
 
@@ -58,6 +62,9 @@ void ClipIDGenerator::update(Renderables& renderables) {
         uint8_t count = 1;
         for (auto& pair : renderables) {
             auto& renderable = pair.second;
+            if (!renderable.used) {
+                continue;
+            }
             renderable.clip.mask |= mask;
 
             // Assign only to clip IDs that have no value yet.
@@ -69,8 +76,13 @@ void ClipIDGenerator::update(Renderables& renderables) {
         bit_offset += bit_count;
     }
 
-    if (bit_offset > 8) {
+    // Prevent this warning from firing on every frame,
+    // which can be expensive in some platforms.
+    static bool warned = false;
+
+    if (!warned && bit_offset > 8) {
         Log::Error(Event::OpenGL, "stencil mask overflow");
+        warned = true;
     }
 }
 

@@ -1,23 +1,11 @@
 #include <mbgl/style/layers/raster_layer_impl.hpp>
-#include <mbgl/renderer/bucket.hpp>
+#include <mbgl/renderer/render_raster_layer.hpp>
 
 namespace mbgl {
 namespace style {
 
-void RasterLayer::Impl::cascade(const CascadeParameters& parameters) {
-    paint.cascade(parameters);
-}
-
-bool RasterLayer::Impl::recalculate(const CalculationParameters& parameters) {
-    bool hasTransitions = paint.recalculate(parameters);
-
-    passes = paint.rasterOpacity > 0 ? RenderPass::Translucent : RenderPass::None;
-
-    return hasTransitions;
-}
-
-std::unique_ptr<Bucket> RasterLayer::Impl::createBucket(BucketParameters&) const {
-    return nullptr;
+std::unique_ptr<RenderLayer> RasterLayer::Impl::createRenderLayer() const {
+    return std::make_unique<RenderRasterLayer>(*this);
 }
 
 } // namespace style

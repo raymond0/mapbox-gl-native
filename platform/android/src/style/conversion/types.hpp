@@ -1,4 +1,4 @@
-// This file is generated. Edit android/platform/scripts/generate-style-code.js, then run `make style-code-android`.
+// This file is generated. Edit android/platform/scripts/generate-style-code.js, then run `make android-style-code`.
 #pragma once
 
 #include "types_string_values.hpp"
@@ -88,6 +88,13 @@ struct Converter<jni::jobject*, mbgl::style::TranslateAnchorType> {
 template <>
 struct Converter<jni::jobject*, mbgl::style::CirclePitchScaleType> {
     Result<jni::jobject*> operator()(jni::JNIEnv& env, const mbgl::style::CirclePitchScaleType& value) const {
+        return convert<jni::jobject*, std::string>(env, toString(value));
+    }
+};
+
+template <>
+struct Converter<jni::jobject*, mbgl::style::LightAnchorType> {
+    Result<jni::jobject*> operator()(jni::JNIEnv& env, const mbgl::style::LightAnchorType& value) const {
         return convert<jni::jobject*, std::string>(env, toString(value));
     }
 };

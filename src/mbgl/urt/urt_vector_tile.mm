@@ -15,6 +15,8 @@
 #include <unordered_map>
 #include "rayclipper.h"
 #include "urt_water_tile_layer.hpp"
+#include <mbgl/renderer/tile_parameters.hpp>
+
 
 #define GLOBAL_OCEAN_END_LEVEL 7    // Needs to match maptool
 
@@ -91,9 +93,9 @@ LayerType LayerForItemType( unsigned int itemType )
 
 UrtVectorTile::UrtVectorTile(const OverscaledTileID& id_,
                              std::string sourceID_,
-                             const style::UpdateParameters& parameters,
+                             const TileParameters& parameters,
                              const Tileset& tileset)
-    : GeometryTile(id_, sourceID_, parameters),
+    : GeometryTile(id_, sourceID_, parameters, *parameters.style.glyphAtlas, *parameters.style.spriteAtlas),
     loader(*this, id_, parameters, tileset)
 {
     

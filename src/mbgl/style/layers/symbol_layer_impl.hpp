@@ -1,13 +1,11 @@
 #pragma once
 
+#include <mbgl/sprite/sprite_atlas.hpp>
 #include <mbgl/style/layer_impl.hpp>
 #include <mbgl/style/layers/symbol_layer.hpp>
 #include <mbgl/style/layers/symbol_layer_properties.hpp>
 
 namespace mbgl {
-
-class SpriteAtlas;
-class SymbolLayout;
 
 namespace style {
 
@@ -15,20 +13,12 @@ class SymbolLayer::Impl : public Layer::Impl {
 public:
     std::unique_ptr<Layer> clone() const override;
     std::unique_ptr<Layer> cloneRef(const std::string& id) const override;
+    void stringifyLayout(rapidjson::Writer<rapidjson::StringBuffer>&) const override;
 
-    void cascade(const CascadeParameters&) override;
-    bool recalculate(const CalculationParameters&) override;
-
-    std::unique_ptr<Bucket> createBucket(BucketParameters&) const override;
-    std::unique_ptr<SymbolLayout> createLayout(BucketParameters&) const;
+    std::unique_ptr<RenderLayer> createRenderLayer() const override;
 
     SymbolLayoutProperties layout;
-    SymbolPaintProperties paint;
-
-    float iconSize = 1.0f;
-    float textSize = 16.0f;
-
-    SpriteAtlas* spriteAtlas = nullptr;
+    SymbolPaintProperties::Cascading cascading;
 };
 
 } // namespace style

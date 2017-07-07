@@ -20,9 +20,19 @@ struct MisuseException : Exception {
     MisuseException(const std::string &msg) : Exception(msg) {}
 };
 
-struct ShaderException : Exception {
-    ShaderException(const char *msg) : Exception(msg) {}
-    ShaderException(const std::string &msg) : Exception(msg) {}
+struct StyleParseException : Exception {
+    StyleParseException(const char *msg) : Exception(msg) {}
+    StyleParseException(const std::string &msg) : Exception(msg) {}
+};
+
+struct StyleLoadException : Exception {
+    StyleLoadException(const char *msg) : Exception(msg) {}
+    StyleLoadException(const std::string &msg) : Exception(msg) {}
+};
+
+struct NotFoundException : Exception {
+    NotFoundException(const char *msg) : Exception(msg) {}
+    NotFoundException(const std::string &msg) : Exception(msg) {}
 };
 
 } // namespace util

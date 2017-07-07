@@ -6,8 +6,8 @@
 //  Copyright © 2017 Mapbox. All rights reserved.
 //
 
-#include "urt_auto_file_source.hpp"
-#include <mbgl/platform/darwin/reachability.h>
+#include <mbgl/urt/urt_auto_file_source.hpp>
+#include <mbgl/storage/reachability.h>
 #include <mbgl/storage/network_status.hpp>
 #import "Foundation/Foundation.h"
 #import "UrtFile/UrtFile.h"

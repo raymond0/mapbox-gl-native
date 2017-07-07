@@ -1,32 +1,37 @@
 add_executable(mbgl-glfw
-    bin/glfw.cpp
+    platform/glfw/main.cpp
 )
 
 target_sources(mbgl-glfw
-    PRIVATE include/mbgl/platform/default/glfw_view.hpp
-    PRIVATE platform/default/glfw_view.cpp
-    PRIVATE include/mbgl/platform/default/settings_json.hpp
-    PRIVATE platform/default/settings_json.cpp
+    PRIVATE platform/glfw/glfw_view.hpp
+    PRIVATE platform/glfw/glfw_view.cpp
+    PRIVATE platform/glfw/settings_json.hpp
+    PRIVATE platform/glfw/settings_json.cpp
+    PRIVATE platform/default/mbgl/util/default_styles.hpp
+    PRIVATE platform/default/mbgl/util/default_styles.cpp
 )
+
+# Our GL implementation is internal to mbgl-core, which causes the GL header to
+# be included after GLFW's own header. They both attempt to define GLAPIENTRY,
+# but unfortunately the GL header doesn't check if it was previously defined,
+# causing a macro redefinition compiler error.
+# There is no particular compiler warning flag to ignore this check on GCC
+# neither it does accept ignoring '-Werror' via diagnostics pragmas. We can
+# only suppress this by either replacing the header path inclusion from -I to
+# -isystem, or completely suppressing errors. Until the former solution is not
+# available, we'll suppress the errors from that definition file.
+set_source_files_properties(platform/glfw/glfw_view.cpp PROPERTIES COMPILE_FLAGS -Wno-error)
 
 target_compile_options(mbgl-glfw
     PRIVATE -fvisibility-inlines-hidden
 )
 
 target_include_directories(mbgl-glfw
-    PRIVATE include
-    PRIVATE src # TODO: eliminate
+    PRIVATE platform/default
 )
 
 target_link_libraries(mbgl-glfw
     PRIVATE mbgl-core
-)
-
-add_custom_command(
-    TARGET mbgl-glfw POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
-            ${CMAKE_SOURCE_DIR}/common/ca-bundle.crt
-            ${CMAKE_CURRENT_BINARY_DIR}/ca-bundle.crt
 )
 
 target_add_mason_package(mbgl-glfw PRIVATE glfw)

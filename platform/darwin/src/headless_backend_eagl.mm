@@ -1,6 +1,4 @@
-#include <mbgl/platform/default/headless_backend.hpp>
-
-#include <mbgl/gl/extension.hpp>
+#include <mbgl/gl/headless_backend.hpp>
 
 #include <OpenGLES/EAGL.h>
 
@@ -8,7 +6,28 @@
 
 namespace mbgl {
 
-gl::glProc HeadlessBackend::initializeExtension(const char* name) {
+struct EAGLImpl : public HeadlessBackend::Impl {
+    EAGLImpl(EAGLContext* glContext_) : glContext(glContext_) {
+        [reinterpret_cast<EAGLContext*>(glContext) retain];
+        reinterpret_cast<EAGLContext*>(glContext).multiThreaded = YES;
+    }
+
+    ~EAGLImpl() {
+        [glContext release];
+    }
+
+    void activateContext() {
+        [EAGLContext setCurrentContext:glContext];
+    }
+
+    void deactivateContext() {
+        [EAGLContext setCurrentContext:nil];
+    }
+
+    EAGLContext* glContext = nullptr;
+};
+
+gl::ProcAddress HeadlessBackend::initializeExtension(const char* name) {
     static CFBundleRef framework = CFBundleGetBundleWithIdentifier(CFSTR("com.apple.opengles"));
     if (!framework) {
         throw std::runtime_error("Failed to load OpenGL framework.");
@@ -18,29 +37,20 @@ gl::glProc HeadlessBackend::initializeExtension(const char* name) {
     void* symbol = CFBundleGetFunctionPointerForName(framework, str);
     CFRelease(str);
 
-    return reinterpret_cast<gl::glProc>(symbol);
+    return reinterpret_cast<gl::ProcAddress>(symbol);
+}
+
+bool HeadlessBackend::hasDisplay() {
+    return true;
 }
 
 void HeadlessBackend::createContext() {
-    glContext = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
+    EAGLContext* glContext = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
     if (glContext == nil) {
         throw std::runtime_error("Error creating GL context object");
     }
-    [reinterpret_cast<EAGLContext*>(glContext) retain];
-    reinterpret_cast<EAGLContext*>(glContext).multiThreaded = YES;
-}
 
-void HeadlessBackend::destroyContext() {
-    [reinterpret_cast<EAGLContext*>(glContext) release];
-    glContext = nil;
-}
-
-void HeadlessBackend::activateContext() {
-    [EAGLContext setCurrentContext:reinterpret_cast<EAGLContext*>(glContext)];
-}
-
-void HeadlessBackend::deactivateContext() {
-    [EAGLContext setCurrentContext:nil];
+    impl.reset(new EAGLImpl(glContext));
 }
 
 } // namespace mbgl

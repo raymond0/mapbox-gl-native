@@ -16,7 +16,10 @@ using namespace mbgl::style;
 Filter parse(const char * expression) {
     rapidjson::GenericDocument<rapidjson::UTF8<>, rapidjson::CrtAllocator> doc;
     doc.Parse<0>(expression);
-    return *conversion::convert<Filter>(doc);
+    conversion::Error error;
+    optional<Filter> filter = conversion::convert<Filter, JSValue>(doc, error);
+    EXPECT_TRUE(bool(filter));
+    return *filter;
 }
 
 Feature feature(const PropertyMap& properties, const Geometry<double>& geometry = Point<double>()) {
@@ -42,7 +45,7 @@ TEST(Filter, EqualsNumber) {
     ASSERT_FALSE(f(feature({{ "foo", std::string("0") }})));
     ASSERT_FALSE(f(feature({{ "foo", false }})));
     ASSERT_FALSE(f(feature({{ "foo", true }})));
-    ASSERT_FALSE(f(feature({{ "foo", nullptr }})));
+    ASSERT_FALSE(f(feature({{ "foo", mapbox::geometry::null_value }})));
     ASSERT_FALSE(f(feature({{}})));
 }
 
@@ -113,13 +116,13 @@ TEST(Filter, NotHas) {
 
 TEST(Filter, ID) {
     Feature feature1 { Point<double>() };
-    feature1.id = { 1234 };
+    feature1.id = { uint64_t(1234) };
 
     ASSERT_TRUE(parse("[\"==\", \"$id\", 1234]")(feature1));
     ASSERT_FALSE(parse("[\"==\", \"$id\", \"1234\"]")(feature1));
 
     Feature feature2 { Point<double>() };
-    feature2.properties["id"] = { 1234 };
+    feature2.properties["id"] = { uint64_t(1234) };
 
     ASSERT_FALSE(parse("[\"==\", \"$id\", 1234]")(feature2));
 }

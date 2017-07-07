@@ -2,13 +2,17 @@ add_executable(mbgl-offline
     bin/offline.cpp
 )
 
+target_sources(mbgl-offline
+    PRIVATE platform/default/mbgl/util/default_styles.hpp
+    PRIVATE platform/default/mbgl/util/default_styles.cpp
+)
+
 target_compile_options(mbgl-offline
     PRIVATE -fvisibility-inlines-hidden
 )
 
 target_include_directories(mbgl-offline
-    PRIVATE include
-    PRIVATE src # TODO: eliminate
+    PRIVATE platform/default
 )
 
 target_link_libraries(mbgl-offline
