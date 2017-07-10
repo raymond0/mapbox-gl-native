@@ -36,7 +36,7 @@ unique_ptr<GeometryTileFeature> UrtVectorTileRoadFeature::clone()
 }
     
     
-UrtVectorTileRoadFeature::MapboxTagsPtr UrtVectorTileRoadFeature::GetMapboxTags() const
+UrtVectorTileRoadFeature::MapboxTagsPtr UrtVectorTileRoadFeature::CreateMapboxTags(unsigned int itemType, BOOL isOneway)
 {
     auto roadClassAndType = [=]() -> pair<string, string>
     {
@@ -102,8 +102,222 @@ UrtVectorTileRoadFeature::MapboxTagsPtr UrtVectorTileRoadFeature::GetMapboxTags(
     
     mapboxTags->insert({"oneway", (string) ( isOneway ? "true" : "false" )});   // ToDo
     mapboxTags->insert({"structure", (string) "none"}); // ToDo
-        
+    
     return mapboxTags;
+}
+
+    
+    
+UrtVectorTileRoadFeature::MapboxTagsPtr UrtVectorTileRoadFeature::GetMapboxTagsStatic(unsigned int itemType, BOOL isOneway)
+{
+    if ( isOneway )
+    {
+        switch ( itemType )
+        {
+            case type_street_nopass:        // ToDo - verify nopass
+            case type_street_0:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_street_residential_city:
+            case type_street_residential_land:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_street_tertiary_city:
+            case type_street_tertiary_land:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_ramp_tertiary:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_street_secondary_city:
+            case type_street_secondary_land:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_ramp_secondary:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_street_primary_city:
+            case type_street_primary_land:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_ramp_primary:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_street_trunk:
+            case type_roundabout:           // ToDo - Roundabout is trunk???
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_ramp_trunk:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_highway_city:
+            case type_street_motorway:
+            case type_highway_land:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_ramp_motorway:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_living_street:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_street_service:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_street_parking_lane:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_street_pedestrian:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            default:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+        }
+    }
+    else
+    {
+        switch ( itemType )
+        {
+            case type_street_nopass:        // ToDo - verify nopass
+            case type_street_0:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_street_residential_city:
+            case type_street_residential_land:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_street_tertiary_city:
+            case type_street_tertiary_land:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_ramp_tertiary:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_street_secondary_city:
+            case type_street_secondary_land:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_ramp_secondary:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_street_primary_city:
+            case type_street_primary_land:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_ramp_primary:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_street_trunk:
+            case type_roundabout:           // ToDo - Roundabout is trunk???
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_ramp_trunk:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_highway_city:
+            case type_street_motorway:
+            case type_highway_land:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_ramp_motorway:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_living_street:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_street_service:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_street_parking_lane:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            case type_street_pedestrian:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+            default:
+            {
+                static MapboxTagsPtr mapboxTags = CreateMapboxTags(itemType, isOneway);
+                return mapboxTags;
+            }
+        }
+    }
+}
+
+    
+//
+//  Profiler indicated that over 1/3 of the rendering time was going on the hashing creation + destuction
+//  of these tags. Have moved to an inelegant but much faster static version for now.
+//
+UrtVectorTileRoadFeature::MapboxTagsPtr UrtVectorTileRoadFeature::GetMapboxTags() const
+{
+    return GetMapboxTagsStatic(itemType, isOneway);
 }
 
     

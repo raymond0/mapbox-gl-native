@@ -26,6 +26,8 @@ public:
 
 protected:
     MapboxTagsPtr GetMapboxTags() const override;
+    static MapboxTagsPtr GetMapboxTagsStatic(unsigned int itemType, BOOL isOneway);
+    static MapboxTagsPtr CreateMapboxTags(unsigned int itemType, BOOL isOneWay);
     virtual GeometryCollection getGeometriesForMapItem( MapItem *mapItem ) const override;
     GeometryCollection geometries;
     bool isOneway;
