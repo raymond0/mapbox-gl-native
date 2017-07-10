@@ -592,6 +592,7 @@ switch (_dataSource)
     _quickZoom.minimumPressDuration = 0;
     [_quickZoom requireGestureRecognizerToFail:_doubleTap];
     [self addGestureRecognizer:_quickZoom];
+    [_singleTapGestureRecognizer requireGestureRecognizerToFail:_quickZoom];
 
     // observe app activity
     //
@@ -1525,8 +1526,19 @@ switch (_dataSource)
     }
     else
     {
-        [self deselectAnnotation:self.selectedAnnotation animated:YES];
+        if ( self.selectedAnnotation == nil )
+        {
+            if ([self.delegate respondsToSelector:@selector(mapView:tapGestureInEmptySpaceRecognized:)])
+            {
+                [self.delegate mapView:self tapGestureInEmptySpaceRecognized:singleTap];
+            }
+        }
+        else
+        {
+            [self deselectAnnotation:self.selectedAnnotation animated:YES];
+        }
     }
+    
 }
 
 /**
@@ -1591,20 +1603,6 @@ switch (_dataSource)
             id <MGLAnnotation> annotation = [self annotationWithTag:hitAnnotationTag];
             NSAssert(annotation, @"Cannot select nonexistent annotation with tag %u", hitAnnotationTag);
             return annotation;
-        }
-    }
-    else
-    {
-        if ( self.selectedAnnotation == nil )
-        {
-            if ([self.delegate respondsToSelector:@selector(mapView:tapGestureRecognized:)])
-            {
-                [self.delegate mapView:self tapGestureRecognized:singleTap];
-            }
-        }
-        else
-        {
-            [self deselectAnnotation:self.selectedAnnotation animated:YES];
         }
     }
 
@@ -1864,17 +1862,6 @@ switch (_dataSource)
                 return NO;
             }
         }
-    }
-    else if (gestureRecognizer == _singleTapGestureRecognizer)
-    {
-      // Gesture will be recognized if it could deselect an annotation
-      if(!self.selectedAnnotation)
-      {
-          id<MGLAnnotation>annotation = [self annotationForGestureRecognizer:(UITapGestureRecognizer*)gestureRecognizer persistingResults:NO];
-          if(!annotation) {
-              return NO;
-          }
-      }
     }
     return YES;
 }
