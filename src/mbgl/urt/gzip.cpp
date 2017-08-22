@@ -23,7 +23,6 @@
 #pragma GCC diagnostic ignored "-Wdeprecated-register"
 #pragma GCC diagnostic ignored "-Wshorten-64-to-32"
 #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 
 #include <boost/iostreams/detail/config/dyn_link.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
