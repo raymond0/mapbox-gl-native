@@ -11,6 +11,8 @@
 #include <mutex>
 #include <chrono>
 
+//#define SAVE_MAPBOX_PROTO_DATA
+
 @interface MBGLBundleCanary : NSObject
 @end
 
@@ -202,6 +204,12 @@ std::unique_ptr<AsyncRequest> HTTPFileSource::request(const Resource& resource, 
 
     @autoreleasepool {
         NSURL* url = [NSURL URLWithString:@(resource.url.c_str())];
+        
+#ifdef SAVE_MAPBOX_PROTO_DATA
+        NSCharacterSet* illegalFileNameCharacters = [NSCharacterSet characterSetWithCharactersInString:@"/\\?%*|\"<>"];
+        NSString *safeName = [[url.absoluteString componentsSeparatedByCharactersInSet:illegalFileNameCharacters] componentsJoinedByString:@""];
+#endif
+        
         if (impl->accountType == 0 &&
             ([url.host isEqualToString:@"mapbox.com"] || [url.host hasSuffix:@".mapbox.com"])) {
             NSString* absoluteString = [url.absoluteString
@@ -286,6 +294,13 @@ std::unique_ptr<AsyncRequest> HTTPFileSource::request(const Resource& resource, 
 
                     if (responseCode == 200) {
                         response.data = std::make_shared<std::string>((const char *)[data bytes], [data length]);
+                        
+#ifdef SAVE_MAPBOX_PROTO_DATA
+                        NSURL *docsDirUrl = [[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask][0];
+                        NSURL *fullUrl = [docsDirUrl URLByAppendingPathComponent:safeName];
+                        [data writeToURL:fullUrl atomically:NO];
+#endif
+                        
                     } else if (responseCode == 204 || (responseCode == 404 && resource.kind == Resource::Kind::Tile)) {
                         response.noContent = true;
                     } else if (responseCode == 304) {
