@@ -35,12 +35,12 @@ MGL_EXPORT
 /**
  Returns a new camera based on information about the camera’s viewpoint.
  
- @param eyeCoordinate The geometric coordinate at which the camera should be
- situated.
+ @param anchorCoordinate The geometric point at which the camera should be
+ directed.
  @param eyeAltitude The altitude (measured in meters) above the map at which the
  camera should be situated. The altitude may be less than the distance from
  the camera’s viewpoint to the camera’s focus point.
- @param pitch The viewing angle of the camera, measured in degrees. A value of
+ @param cameraPitch The viewing angle of the camera, measured in degrees. A value of
  `0` results in a camera pointed straight down at the map. Angles greater
  than `0` result in a camera angled toward the horizon.
  @param heading The camera’s heading, measured in degrees clockwise from true
