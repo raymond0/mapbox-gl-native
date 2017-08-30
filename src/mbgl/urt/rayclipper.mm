@@ -1080,7 +1080,7 @@ void PolygonsWithIncidentEdge( Polygon &polygon, struct rect rect, vector<Polygo
         assert( EdgeForCoord( polygon[ firstIndex ], rect ) != EdgeNotAnEdge );
         
         size_t secondIndex;
-        for ( secondIndex = firstIndex + 1; secondIndex != firstIndex; secondIndex = ( secondIndex + 1 ) % polygon.size() )
+        for ( secondIndex = ( firstIndex + 1 ) % polygon.size(); secondIndex != firstIndex; secondIndex = ( secondIndex + 1 ) % polygon.size() )
         {
             if ( EdgeForCoord( polygon[secondIndex], rect ) != EdgeNotAnEdge )
             {

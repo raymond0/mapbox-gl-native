@@ -69,9 +69,6 @@ namespace mbgl
         GeometryCollection ClippedPolygonInLocalCoords( MapItem *item ) const;
         unsigned int itemType;
     private:
-        int PointInPolygon( const GeometryCoordinates &polygon, const GeometryCoordinate &coordinate ) const;
-        void AssignHolesToOuterPolygons( const GeometryCollection &outerPolygons, const GeometryCollection &holes,
-                                         GeometryCollection &completed ) const;
     };
 
 }
