@@ -27,6 +27,8 @@ void UrtVectorTilePlaceLabelFeature::addMapItem( MapItem *mapItem )
     {
         townLabelString = townLabel;
     }
+    
+    population = [[mapItem attributeOfType:attr_population_int] intForAttribute];
 
     geometryCollection = getGeometriesForMapItem(mapItem);
 }
@@ -77,8 +79,38 @@ UrtVectorTileFeature::MapboxTagsPtr UrtVectorTilePlaceLabelFeature::GetMapboxTag
     
     if ( labelType.length() > 0 )
     {
-        mapboxTags->insert({"type", (string) labelType});
+        mapboxTags->insert({"type", labelType});
+    }
+    
+    if ( population > 5000000 )
+    {
+        mapboxTags->insert({"scalerank", (int64_t) 0});
+        mapboxTags->insert({"ldir", (string) "N"});
+    }
+    else if ( population > 2000000 )
+    {
         mapboxTags->insert({"scalerank", (int64_t) 1});
+        mapboxTags->insert({"ldir", (string) "N"});
+    }
+    else if ( population > 1000000 )
+    {
+        mapboxTags->insert({"scalerank", (int64_t) 2});
+        mapboxTags->insert({"ldir", (string) "N"});
+    }
+    else if ( population > 500000 )
+    {
+        mapboxTags->insert({"scalerank", (int64_t) 3});
+        mapboxTags->insert({"ldir", (string) "N"});
+    }
+    else if ( population > 100000 )
+    {
+        mapboxTags->insert({"scalerank", (int64_t) 4});
+        mapboxTags->insert({"ldir", (string) "N"});
+    }
+    else if ( population > 20000 )
+    {
+        mapboxTags->insert({"scalerank", (int64_t) 5});
+        mapboxTags->insert({"ldir", (string) "N"});
     }
     
     if ( townLabelString.length() > 0 )
@@ -86,10 +118,6 @@ UrtVectorTileFeature::MapboxTagsPtr UrtVectorTilePlaceLabelFeature::GetMapboxTag
         mapboxTags->insert({"name", townLabelString});
         mapboxTags->insert({"name_en", townLabelString});
     }
-    
-    //mapboxTags.emplace_back("ldir", (string) "N");
-    //mapboxTags.emplace_back("localrank", (uint64_t) 1);
-    //mapboxTags.emplace_back("scalerank", (uint64_t) 1);
     
     return mapboxTags;
 }

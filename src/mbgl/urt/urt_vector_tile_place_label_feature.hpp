@@ -27,6 +27,7 @@ namespace mbgl
         virtual MapboxTagsPtr GetMapboxTags() const override;
     private:
         std::string townLabelString;
+        int population;
     };
 
     
