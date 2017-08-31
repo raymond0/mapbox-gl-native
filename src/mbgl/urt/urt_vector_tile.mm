@@ -51,6 +51,7 @@ typedef enum
     LayerRoad,
     LayerRoadLabel,
     LayerPlaceLabel,
+    LayerCountryLabel,
 #ifdef DENSITY_DEBUGGING
     LayerDensityDebug,
 #endif
@@ -73,6 +74,8 @@ LayerType LayerForItemType( unsigned int itemType )
         case type_poly_debug_city_boundary:
             return LayerDensityDebug;
 #endif
+        case type_country_label:
+            return LayerCountryLabel;
         default:
             if ( ItemTypeIsPlaceLabel ( itemType ) )
             {
@@ -143,11 +146,15 @@ UrtVectorTileData::UrtVectorTileData(std::shared_ptr<UrtTileData> data_)
     
     layers = shared_ptr< LayersType >( new LayersType() );
     
+    //
+    //  These need to match the LayerType enum
+    //
     layers->emplace_back(shared_ptr<UrtTileLayer> (new UrtTileLayer("landuse", region)));
     layers->emplace_back(shared_ptr<UrtTileLayer> (new WaterTileLayer("water", region)));
     layers->emplace_back(shared_ptr<UrtTileLayer> (new UrtRoadTileLayer("road", region)));
     layers->emplace_back(shared_ptr<UrtTileLayer> (new UrtRoadLabelTileLayer("road_label", region)));
     layers->emplace_back(shared_ptr<UrtTileLayer> (new UrtPlaceTileLayer("place_label", region)));
+    layers->emplace_back(shared_ptr<UrtTileLayer> (new UrtCountryLabelTileLayer("country_label", region)));
 #ifdef DENSITY_DEBUGGING
     layers->emplace_back(shared_ptr<UrtTileLayer> (new UrtTileLayer("debug_density", region)));
 #endif
@@ -195,17 +202,21 @@ bool UrtVectorTileData::shouldIncludeItemType( unsigned int itemType, NSInteger 
     
     switch ( itemType )
     {
-        case type_living_street:
         case type_street_parking_lane:
         case type_street_pedestrian:
-        case type_street_service:
             return tileLevel >= 15;
+            
+        case type_living_street:
+        case type_street_service:
+            return tileLevel >= 14;
             
         case type_street_nopass:
         case type_street_0:
+            return tileLevel >= 13;
+            
         case type_street_residential_city:
         case type_street_residential_land:
-            return tileLevel >= 13;
+            return tileLevel >= 12;
             
         case type_street_tertiary_city:
         case type_street_tertiary_land:
@@ -229,7 +240,7 @@ bool UrtVectorTileData::shouldIncludeItemType( unsigned int itemType, NSInteger 
         case type_street_trunk:
         case type_ramp_trunk:
         case type_roundabout:
-            return tileLevel >= 6;
+            return tileLevel >= 5;
             
         default:
             assert( false && "Unhandled road type" );

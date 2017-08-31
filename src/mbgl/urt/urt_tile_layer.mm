@@ -76,5 +76,13 @@ void UrtPlaceTileLayer::addMapItem( MapItem *mapItem, bool fromProxyTile )
     feature->addMapItem(mapItem);
     features.emplace_back( move(feature) );
 }
+    
+    
+void UrtCountryLabelTileLayer::addMapItem( MapItem *mapItem, bool fromProxyTile )
+{
+    auto feature = make_unique<UrtVectorTileCountryLabelFeature>(mapItem.itemType, region, fromProxyTile);
+    feature->addMapItem(mapItem);
+    features.emplace_back( move(feature) );
+}
 
 }

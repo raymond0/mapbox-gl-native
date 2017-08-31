@@ -63,4 +63,12 @@ public:
 };
     
     
+class UrtCountryLabelTileLayer : public UrtTileLayer
+{
+public:
+    UrtCountryLabelTileLayer( string name_, URRegion region_ ) : UrtTileLayer ( name_, region_ ) {}
+    virtual void addMapItem( MapItem *mapItem, bool fromProxyTile );
+};
+    
+    
 }

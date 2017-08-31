@@ -28,4 +28,21 @@ namespace mbgl
     private:
         std::string townLabelString;
     };
+
+    
+    class UrtVectorTileCountryLabelFeature : public UrtVectorTileFeature
+    {
+    public:
+        UrtVectorTileCountryLabelFeature( unsigned int itemType_, URRegion region_, bool fromProxyTile_ );
+        virtual void addMapItem( MapItem *mapItem ) override;
+        virtual unique_ptr<GeometryTileFeature> clone() override;
+        
+        virtual FeatureType getType() const override;
+    protected:
+        virtual MapboxTagsPtr GetMapboxTags() const override;
+    private:
+        std::string labelString;
+        int population;
+    };
+
 }
