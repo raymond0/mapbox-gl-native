@@ -174,6 +174,83 @@ vector<UrtVectorTileFeature::CoordRange> UrtVectorTileFeature::RelevantCoordinat
     
     return validRanges;
 }
+    
+    
+inline void AddGeometryCoordinate( GeometryCoordinates &output, GeometryCoordinate &outputCoord )
+{
+    if ( output.size() > 0 )
+    {
+        const auto &back = output.back();
+        
+        if ( back.x == outputCoord.x && back.y == outputCoord.y )
+        {
+            return;
+        }
+        
+        if ( output.size() >= 2 )
+        {
+            const auto &penultimate = output[output.size() - 2];
+            
+            //
+            //  Don't go somewhere to come back
+            //
+            if ( penultimate.x == outputCoord.x && penultimate.y == outputCoord.y )
+            {
+                output.pop_back();
+                return;
+            }
+            
+            //
+            //  Multiple points sharing an axis should be reduced to first / last points
+            //  on that access.
+            //
+            if ( ( penultimate.x == back.x && back.x == outputCoord.x ) ||
+                 ( penultimate.y == back.y && back.y == outputCoord.y )    )
+            {
+                output[output.size() - 1] = outputCoord;
+                
+                //
+                // back has just changed.
+                // We are now looking at point a -> b -> a
+                //
+                if ( back == penultimate )
+                {
+                    output.pop_back();
+                }
+                
+                return;
+            }
+        }
+    }
+    
+    output.emplace_back( outputCoord );
+}
+    
+    
+inline void TidyEnds( GeometryCoordinates &output )
+{
+    //
+    // Prune the front and back
+    //
+    while (output.size() >= 4)
+    {
+        const auto &first =       output[0];
+        const auto &second =      output[1];
+        const auto &penultimate = output[output.size() - 2];
+        const auto &last =        output[output.size() - 1];
+        
+        if ( second.x == penultimate.x && second.y == penultimate.y &&
+            first.x == last.x && first.y == last.y )
+        {
+            output.pop_back();
+            output.erase(output.begin());
+        }
+        else
+        {
+            return;
+        }
+    }
+}
 
 
 GeometryCoordinates UrtVectorTileFeature::ConvertToMapboxCoordinates( const vector<coord> &globalCoords ) const
@@ -195,22 +272,14 @@ GeometryCoordinates UrtVectorTileFeature::ConvertToMapboxCoordinates( const vect
         double tileY = ((double) localCoord.y ) * latMultiplier;
         
         GeometryCoordinate outputCoord( tileX, extent - tileY );
-        
-        if ( output.size() > 0 )
-        {
-            if ( output.back().x == outputCoord.x &&  output.back().y == outputCoord.y )
-            {
-                continue;
-            }
-        }
-        
-        output.emplace_back( outputCoord );
+        AddGeometryCoordinate(output, outputCoord);
     }
     
+    TidyEnds( output );
     return output;
 }
 
-
+    
 GeometryCoordinates UrtVectorTileFeature::GetMapboxCoordinatesInRange( MapItem *item, CoordRange coordRange ) const
 {
     GeometryCoordinates output;
@@ -293,18 +362,10 @@ GeometryCoordinates UrtVectorTileFeature::GetMapboxCoordinatesInRange( MapItem *
         }
         
         GeometryCoordinate outputCoord( tileX, extent - tileY );
-        
-        if ( i > 0 )
-        {
-            if ( output.back().x == outputCoord.x &&  output.back().y == outputCoord.y )
-            {
-                continue;
-            }
-        }
-        
-        output.emplace_back( outputCoord );
+        AddGeometryCoordinate( output, outputCoord );
     }
     
+    TidyEnds( output );
     return output;
 }
 
