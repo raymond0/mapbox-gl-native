@@ -121,7 +121,8 @@ workflows:
         - content: |-
             #!/bin/bash
             set -eu -o pipefail
-            platform/ios/scripts/deploy-packages.sh ${BITRISE_GIT_TAG}
+            export VERSION_TAG=${BITRISE_GIT_TAG}
+            platform/ios/scripts/deploy-packages.sh
         - is_debug: 'yes'
     - slack:
         title: Post to Slack
