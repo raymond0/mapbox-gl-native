@@ -68,7 +68,6 @@ workflows:
         inputs:
         - content: |-
             #!/bin/bash
-            apt-get install -y python-pip python-dev build-essential
             pip install awscli
     - script:
         title: Build package
@@ -113,7 +112,6 @@ workflows:
         inputs:
         - content: |-
             #!/bin/bash
-            apt-get install -y python-pip python-dev build-essential
             pip install awscli
     - script:
         title: Build package
