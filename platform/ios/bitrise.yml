@@ -121,7 +121,7 @@ workflows:
         - content: |-
             #!/bin/bash
             set -eu -o pipefail
-            platform/ios/scripts/deploy.sh ${BITRISE_GIT_TAG}
+            platform/ios/scripts/deploy-packages.sh ${BITRISE_GIT_TAG}
         - is_debug: 'yes'
     - slack:
         title: Post to Slack
