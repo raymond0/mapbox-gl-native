@@ -83,11 +83,11 @@ if [[ $( echo ${VERSION_TAG} | grep --invert-match ios-v ) ]]; then
     exit 1
 fi
 
-if [[ $( curl --head https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/releases/tags/${VERSION_TAG} | head -n 1 | grep -c "404 Not Found") == 0 ]]; then
-    echo "Error: ${VERSION_TAG} has already been published on GitHub"
-    echo "See: https://github.com/${GITHUB_USER}/${GITHUB_REPO}/releases/tag/${VERSION_TAG}"
-    exit 1
-fi
+# if [[ $( curl --head https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/releases/tags/${VERSION_TAG} | head -n 1 | grep -c "404 Not Found") == 0 ]]; then
+#     echo "Error: ${VERSION_TAG} has already been published on GitHub"
+#     echo "See: https://github.com/${GITHUB_USER}/${GITHUB_REPO}/releases/tag/${VERSION_TAG}"
+#     exit 1
+# fi
 
 PUBLISH_VERSION=$( echo ${VERSION_TAG} | sed 's/^ios-v//' )
 git checkout ${VERSION_TAG}
